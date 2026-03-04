@@ -29,13 +29,30 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Download previous benchmark baseline
+        uses: actions/download-artifact@v8
+        with:
+          name: benchmark-baseline
+          path: .
+        continue-on-error: true
+
       - name: Run benchmarks
         run: uv run python benchmark.py --save latest.json --compare benchmark_with_ai.json
 
-      - name: Upload benchmark results
+      - name: Upload benchmark results as new baseline
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-baseline
+          path: latest.json
+          retention-days: 90
+          overwrite: true
+
+      - name: Upload benchmark results (per-commit archive)
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: benchmark-results-${{ github.sha }}
           path: latest.json
           retention-days: 30
+

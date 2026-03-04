@@ -442,8 +442,16 @@ def _compare_results(baseline_path: str) -> int:
     """Compare current results against a baseline JSON file.
 
     Returns the number of regressions detected (0 = clean).
+    Returns -1 if the baseline file does not exist yet (first run).
     """
     import json
+    import os
+
+    if not os.path.exists(baseline_path):
+        print(
+            f"\n  NOTE: Baseline file '{baseline_path}' not found — skipping comparison (first run)."
+        )
+        return 0
 
     with open(baseline_path, encoding="utf-8") as f:
         baseline: dict[str, float] = json.load(f)
@@ -529,11 +537,11 @@ def main() -> int:
     print(f"{'=' * 60}")
 
     regressions = 0
-    if args.compare:
-        regressions = _compare_results(args.compare)
-
     if args.save:
         _save_results(args.save)
+
+    if args.compare:
+        regressions = _compare_results(args.compare)
 
     print()
 
