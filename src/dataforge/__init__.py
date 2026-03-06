@@ -16,5 +16,5 @@ Usage::
 from dataforge.core import DataForge
 from dataforge.schema import Schema
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = ["DataForge", "Schema", "__version__"]
