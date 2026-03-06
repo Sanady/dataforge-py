@@ -1,5 +1,5 @@
 [project]
-name = "dataforge"
+name = "dataforge-py"
 version = "0.2.0"
 description = "High-performance fake data generator for testing"
 readme = "README.md"
