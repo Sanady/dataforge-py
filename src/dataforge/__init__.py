@@ -11,10 +11,14 @@ Usage::
 
     # Unique values
     forge.unique.person.first_name()    # guaranteed unique per call
+
+    # Introspection
+    DataForge.list_providers()          # ["address", "company", ...]
+    DataForge.list_fields()             # {"first_name": ("person", ...), ...}
 """
 
 from dataforge.core import DataForge
 from dataforge.schema import Schema
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __all__ = ["DataForge", "Schema", "__version__"]

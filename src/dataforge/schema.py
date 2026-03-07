@@ -18,6 +18,11 @@ Usage::
         "email": "email",
         "username": lambda row: row["name"].lower().replace(" ", "."),
     })
+
+    # Typed schema — values preserve native Python types:
+    schema = forge.schema(["first_name", "port", "boolean"])
+    rows = schema.generate(count=10)
+    # rows[0]["port"] → 8080 (int, not str)
 """
 
 from __future__ import annotations
@@ -38,6 +43,10 @@ class Schema:
     All field lookups are performed **once** during ``__init__``.
     Subsequent ``generate()`` calls execute only the bound methods
     with zero overhead from name resolution.
+
+    Values are preserved in their native Python types by default.
+    Export methods (``to_csv``, ``to_jsonl``, ``to_sql``) convert
+    values to strings as needed by the output format.
 
     Parameters
     ----------
@@ -91,14 +100,18 @@ class Schema:
     # Core generation
     # ------------------------------------------------------------------
 
-    def _generate_columns(self, count: int) -> list[list[str]]:
+    def _generate_columns(self, count: int) -> list[list[Any]]:
         """Generate column data in bulk (column-first).
 
         Shared by :meth:`generate`, :meth:`stream`, and export helpers.
         Each field is generated in one batch call via its ``count=N``
         path — no per-row field resolution overhead.
 
-        Row-lambda columns are filled with empty strings here and
+        Values are preserved in their native Python types.  No ``str()``
+        coercion is applied — that responsibility belongs to export
+        methods that need string output.
+
+        Row-lambda columns are filled with ``None`` here and
         populated later by :meth:`_apply_row_lambdas`.
 
         Parameters
@@ -108,33 +121,53 @@ class Schema:
 
         Returns
         -------
-        list[list[str]]
+        list[list[Any]]
         """
-        col_data: list[list[str]] = []
+        col_data: list[list[Any]] = []
         _sentinel = _ROW_LAMBDA
-        _str = str
-        _isinstance = isinstance
         for fn in self._callables:
             if fn is _sentinel:
                 # Placeholder — filled by _apply_row_lambdas
-                col_data.append([""] * count)
+                col_data.append([None] * count)
             elif count == 1:
                 val = fn()  # type: ignore[operator]
-                col_data.append([val if _isinstance(val, _str) else _str(val)])
+                col_data.append([val])
             else:
                 values = fn(count=count)  # type: ignore[operator]
-                # Most providers return list[str] — skip redundant str()
-                if values and _isinstance(values[0], _str):
-                    col_data.append(values)  # type: ignore[arg-type]
-                else:
-                    col_data.append([_str(v) for v in values])
+                col_data.append(values if isinstance(values, list) else [values])
         return col_data
 
-    def _apply_row_lambdas(self, rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    @staticmethod
+    def _stringify_columns(col_data: list[list[Any]]) -> list[list[str]]:
+        """Convert column data to strings for text-based exports.
+
+        Optimized: skips conversion for columns that are already all
+        strings (the common case for most providers).
+
+        Parameters
+        ----------
+        col_data : list[list[Any]]
+            Native-typed column data.
+
+        Returns
+        -------
+        list[list[str]]
+        """
+        result: list[list[str]] = []
+        _str = str
+        _isinstance = isinstance
+        for col in col_data:
+            if col and _isinstance(col[0], _str):
+                result.append(col)  # type: ignore[arg-type]
+            else:
+                result.append([_str(v) if v is not None else "" for v in col])
+        return result
+
+    def _apply_row_lambdas(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Apply row-dependent lambdas to generated rows in-place.
 
         Each lambda receives the current row dict and its return
-        value is converted to ``str`` and stored in the row.
+        value is stored in the row with its native type.
         Lambdas are applied in column order, so later lambdas
         can reference earlier lambda-generated columns.
         """
@@ -143,11 +176,10 @@ class Schema:
         columns = self._columns
         for row in rows:
             for idx, fn in self._row_lambdas.items():
-                val = fn(row)
-                row[columns[idx]] = val if isinstance(val, str) else str(val)
+                row[columns[idx]] = fn(row)
         return rows
 
-    def generate(self, count: int = 10) -> list[dict[str, str]]:
+    def generate(self, count: int = 10) -> list[dict[str, Any]]:
         """Generate *count* rows as a list of dicts.
 
         Uses **column-first generation**: each field is generated in
@@ -156,6 +188,9 @@ class Schema:
         calls with ``num_fields`` batch calls — significantly faster
         for large counts.
 
+        Values are preserved in their native Python types (``int``,
+        ``float``, ``bool``, ``str``, etc.).
+
         Parameters
         ----------
         count : int
@@ -163,7 +198,7 @@ class Schema:
 
         Returns
         -------
-        list[dict[str, str]]
+        list[dict[str, Any]]
         """
         if count == 0:
             return []
@@ -179,7 +214,7 @@ class Schema:
         self,
         count: int,
         batch_size: int | None = None,
-    ) -> Iterator[dict[str, str]]:
+    ) -> Iterator[dict[str, Any]]:
         """Yield rows lazily in batches — avoids materializing all rows.
 
         Internally generates data in column-first batches for
@@ -197,7 +232,7 @@ class Schema:
 
         Yields
         ------
-        dict[str, str]
+        dict[str, Any]
         """
         columns = self._columns
         num_cols = len(columns)
@@ -230,7 +265,7 @@ class Schema:
         self,
         count: int,
         batch_size: int | None = None,
-    ) -> AsyncIterator[dict[str, str]]:
+    ) -> AsyncIterator[dict[str, Any]]:
         """Yield rows lazily via ``async for`` — one row at a time.
 
         Internally uses the same column-first batch generation as
@@ -253,7 +288,7 @@ class Schema:
 
         Yields
         ------
-        dict[str, str]
+        dict[str, Any]
         """
         import asyncio
 
@@ -286,7 +321,12 @@ class Schema:
     # Export helpers
     # ------------------------------------------------------------------
 
-    def to_csv(self, count: int = 10, path: str | None = None) -> str:
+    def to_csv(
+        self,
+        count: int = 10,
+        path: str | None = None,
+        delimiter: str = ",",
+    ) -> str:
         """Generate rows and return as CSV string.
 
         Parameters
@@ -295,6 +335,8 @@ class Schema:
             Number of rows.
         path : str | None
             Optional file path to write.
+        delimiter : str
+            Field delimiter (default: comma).
 
         Returns
         -------
@@ -308,9 +350,14 @@ class Schema:
             return ""
 
         buf = io.StringIO()
-        writer = csv.DictWriter(buf, fieldnames=self._columns)
+        writer = csv.DictWriter(buf, fieldnames=self._columns, delimiter=delimiter)
         writer.writeheader()
-        writer.writerows(rows)
+        # Convert values to strings for CSV output
+        _str = str
+        for row in rows:
+            writer.writerow(
+                {k: _str(v) if v is not None else "" for k, v in row.items()}
+            )
         content = buf.getvalue()
 
         if path is not None:
@@ -324,6 +371,7 @@ class Schema:
         path: str,
         count: int = 10,
         batch_size: int | None = None,
+        delimiter: str = ",",
     ) -> int:
         """Stream rows to a CSV file without materializing all data.
 
@@ -338,6 +386,8 @@ class Schema:
             Total number of rows.
         batch_size : int | None
             Internal batch size.  Auto-tuned when ``None``.
+        delimiter : str
+            Field delimiter (default: comma).
 
         Returns
         -------
@@ -354,22 +404,27 @@ class Schema:
 
         written = 0
         row_lambdas = self._row_lambdas
+        _str = str
         with open(path, "w", encoding="utf-8", newline="") as f:
-            writer = csv.writer(f)
+            writer = csv.writer(f, delimiter=delimiter)
             writer.writerow(columns)
 
             remaining = count
             while remaining > 0:
                 chunk = min(remaining, batch_size)
                 col_data = self._generate_columns(chunk)
+                str_data = self._stringify_columns(col_data)
                 if row_lambdas:
                     batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
                     self._apply_row_lambdas(batch_rows)
-                    writer.writerows([row[c] for c in columns] for row in batch_rows)
+                    writer.writerows(
+                        [_str(row[c]) if row[c] is not None else "" for c in columns]
+                        for row in batch_rows
+                    )
                 else:
                     # Write all rows in one call — avoids per-row Python
                     # function call overhead for csv.writer.writerow().
-                    writer.writerows(zip(*col_data))
+                    writer.writerows(zip(*str_data))
                 written += chunk
                 remaining -= chunk
 
@@ -377,6 +432,9 @@ class Schema:
 
     def to_jsonl(self, count: int = 10, path: str | None = None) -> str:
         """Generate rows and return as JSON Lines string.
+
+        Values are serialized in their native types — integers stay
+        as numbers, booleans as ``true``/``false``, etc.
 
         Parameters
         ----------
@@ -397,6 +455,33 @@ class Schema:
         content = "\n".join(lines)
         if content:
             content += "\n"
+
+        if path is not None:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+        return content
+
+    def to_json(self, count: int = 10, path: str | None = None, indent: int = 2) -> str:
+        """Generate rows and return as a JSON array string.
+
+        Parameters
+        ----------
+        count : int
+            Number of rows.
+        path : str | None
+            Optional file path to write.
+        indent : int
+            JSON indentation level (default: 2).
+
+        Returns
+        -------
+        str
+        """
+        import json
+
+        rows = self.generate(count)
+        content = json.dumps(rows, indent=indent, ensure_ascii=False)
 
         if path is not None:
             with open(path, "w", encoding="utf-8") as f:
@@ -512,11 +597,17 @@ class Schema:
         _BATCH = 1000
         prefix = f"INSERT INTO {tbl} ({col_list}) VALUES"
         parts: list[str] = []
+        _str = str
         for batch_start in range(0, len(rows), _BATCH):
             batch = rows[batch_start : batch_start + _BATCH]
             value_rows = []
             for row in batch:
-                vals = ", ".join("'" + row[c].replace("'", "''") + "'" for c in columns)
+                vals = ", ".join(
+                    "NULL"
+                    if row[c] is None
+                    else "'" + _str(row[c]).replace("'", "''") + "'"
+                    for c in columns
+                )
                 value_rows.append(f"({vals})")
             parts.append(f"{prefix}\n" + ",\n".join(value_rows) + ";")
 
@@ -599,6 +690,7 @@ class Schema:
         schema = pa.schema([(col, pa.string()) for col in columns])
         written = 0
         row_lambdas = self._row_lambdas
+        _str = str
 
         with pq.ParquetWriter(path, schema) as writer:
             remaining = count
@@ -609,7 +701,15 @@ class Schema:
                     # Must apply lambdas row-wise, then re-extract columns
                     batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
                     self._apply_row_lambdas(batch_rows)
-                    col_data = [[row[c] for row in batch_rows] for c in columns]
+                    col_data = [
+                        [
+                            _str(row[c]) if row[c] is not None else ""
+                            for row in batch_rows
+                        ]
+                        for c in columns
+                    ]
+                else:
+                    col_data = self._stringify_columns(col_data)
                 arrays = [pa.array(col, type=pa.string()) for col in col_data]
                 batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
                 writer.write_batch(batch)
@@ -669,6 +769,7 @@ class Schema:
 
         schema = pa.schema([(col, pa.string()) for col in columns])
         row_lambdas = self._row_lambdas
+        _str = str
 
         if count <= batch_size:
             # Single-shot: no concat overhead
@@ -676,7 +777,12 @@ class Schema:
             if row_lambdas:
                 batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
                 self._apply_row_lambdas(batch_rows)
-                col_data = [[row[c] for row in batch_rows] for c in columns]
+                col_data = [
+                    [_str(row[c]) if row[c] is not None else "" for row in batch_rows]
+                    for c in columns
+                ]
+            else:
+                col_data = self._stringify_columns(col_data)
             arrays = [pa.array(col, type=pa.string()) for col in col_data]
             return pa.table(dict(zip(columns, arrays)), schema=schema)
 
@@ -689,7 +795,12 @@ class Schema:
             if row_lambdas:
                 batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
                 self._apply_row_lambdas(batch_rows)
-                col_data = [[row[c] for row in batch_rows] for c in columns]
+                col_data = [
+                    [_str(row[c]) if row[c] is not None else "" for row in batch_rows]
+                    for c in columns
+                ]
+            else:
+                col_data = self._stringify_columns(col_data)
             arrays = [pa.array(col, type=pa.string()) for col in col_data]
             batches.append(pa.record_batch(arrays, schema=schema))
             remaining -= chunk
@@ -739,13 +850,19 @@ class Schema:
             batch_size = min(count, max(1000, 100_000 // max(num_cols, 1)))
 
         row_lambdas = self._row_lambdas
+        _str = str
 
         if count <= batch_size:
             col_data = self._generate_columns(count)
             if row_lambdas:
                 batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
                 self._apply_row_lambdas(batch_rows)
-                col_data = [[row[c] for row in batch_rows] for c in columns]
+                col_data = [
+                    [_str(row[c]) if row[c] is not None else "" for row in batch_rows]
+                    for c in columns
+                ]
+            else:
+                col_data = self._stringify_columns(col_data)
             return pl.DataFrame(
                 {col: data for col, data in zip(columns, col_data)},
                 schema={col: pl.Utf8 for col in columns},
@@ -760,7 +877,12 @@ class Schema:
             if row_lambdas:
                 batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
                 self._apply_row_lambdas(batch_rows)
-                col_data = [[row[c] for row in batch_rows] for c in columns]
+                col_data = [
+                    [_str(row[c]) if row[c] is not None else "" for row in batch_rows]
+                    for c in columns
+                ]
+            else:
+                col_data = self._stringify_columns(col_data)
             frames.append(
                 pl.DataFrame(
                     {col: data for col, data in zip(columns, col_data)},
