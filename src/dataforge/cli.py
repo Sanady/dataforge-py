@@ -157,6 +157,20 @@ def _build_parser() -> argparse.ArgumentParser:
         "(field_name:probability pairs, comma-separated).",
     )
     parser.add_argument(
+        "--schema",
+        default=None,
+        metavar="FILE",
+        help="Load schema definition from a JSON, YAML, or TOML file. "
+        "When used, field arguments on the command line are ignored.",
+    )
+    parser.add_argument(
+        "--save-schema",
+        default=None,
+        metavar="FILE",
+        help="Save the current field specification to a schema file "
+        "(JSON, YAML, or TOML — detected from extension) and exit.",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"dataforge {__version__}",
@@ -200,22 +214,26 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if not args.fields:
-        # Default fields
-        args.fields = ["first_name", "last_name", "email"]
+        # Default fields (only when no --schema)
+        if not args.schema:
+            args.fields = ["first_name", "last_name", "email"]
+        else:
+            args.fields = []
 
     # Parse field specs (handle column renaming "Name=full_name")
     field_specs = [_parse_field_spec(f) for f in args.fields]
     headers = [col_name for col_name, _ in field_specs]
     field_names = [field_name for _, field_name in field_specs]
 
-    # Validate fields before generating
-    for col_name, field_name in field_specs:
-        if field_name not in field_map and "." not in field_name:
-            print(
-                f"Error: unknown field '{field_name}'. Use --list-fields to see options.",
-                file=sys.stderr,
-            )
-            return 1
+    # Validate fields before generating (skip when --schema provides fields)
+    if not args.schema:
+        for col_name, field_name in field_specs:
+            if field_name not in field_map and "." not in field_name:
+                print(
+                    f"Error: unknown field '{field_name}'. Use --list-fields to see options.",
+                    file=sys.stderr,
+                )
+                return 1
 
     # Validate --stream requires --output
     if args.stream and not args.output:
@@ -236,7 +254,7 @@ def main(argv: list[str] | None = None) -> int:
     forge = DataForge(locale=args.locale, seed=args.seed)
 
     # Build field dict for Schema (supports column renaming)
-    if any(col != field for col, field in field_specs):
+    if field_specs and any(col != field for col, field in field_specs):
         # Column renaming in use — build dict
         fields_arg: list[str] | dict[str, str] = {
             col: field for col, field in field_specs
@@ -275,6 +293,56 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             null_fields[name.strip()] = prob
 
+    # --schema: load field definitions from a file
+    if args.schema:
+        from dataforge.schema_io import load_schema, dict_to_schema_args
+
+        try:
+            schema_def = load_schema(args.schema)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"Error loading schema: {exc}", file=sys.stderr)
+            return 1
+
+        schema_fields, schema_count, schema_null, schema_unique = dict_to_schema_args(
+            schema_def
+        )
+
+        # CLI --count overrides schema count only when explicitly provided
+        count = args.count if args.count != 10 else schema_count
+        args.count = count
+
+        # Build fields_arg and headers from loaded schema
+        if isinstance(schema_fields, dict):
+            fields_arg = schema_fields
+            headers = list(schema_fields.keys())
+        else:
+            fields_arg = schema_fields
+            headers = list(schema_fields)
+
+        # Merge null_fields: CLI --null-fields wins over schema file
+        if null_fields is None and schema_null:
+            null_fields = schema_null
+
+    # --save-schema: save current schema definition to a file and exit
+    if args.save_schema:
+        from dataforge.schema_io import schema_to_dict, save_schema as _save_schema
+
+        try:
+            d = schema_to_dict(
+                fields=fields_arg,
+                count=args.count,
+                null_fields=null_fields,
+            )
+            _save_schema(d, args.save_schema)
+        except ValueError as exc:
+            print(f"Error saving schema: {exc}", file=sys.stderr)
+            return 1
+        print(
+            f"Schema saved to {args.save_schema}",
+            file=sys.stderr,
+        )
+        return 0
+
     # Resolve delimiter
     delimiter = args.delimiter
     if delimiter is None:
@@ -310,7 +378,7 @@ def main(argv: list[str] | None = None) -> int:
             # JSON array can't easily stream, but we can generate
             # and write — still respects --output
             schema_j = forge.schema(fields_arg, null_fields=null_fields)
-            content = schema_j.to_json(
+            schema_j.to_json(
                 count=args.count,
                 path=path,
                 encoding=encoding,

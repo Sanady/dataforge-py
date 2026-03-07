@@ -3,12 +3,10 @@
 import csv
 import io
 import json
-import os
-import tempfile
 
 import pytest
 
-from dataforge import DataForge, Schema, __version__
+from dataforge import DataForge, __version__
 
 
 # ======================================================================
@@ -825,7 +823,7 @@ class TestCliStream:
         )
         assert result == 0
         with open(path) as f:
-            lines = [l.strip() for l in f if l.strip()]
+            lines = [line.strip() for line in f if line.strip()]
         assert len(lines) == 50
         for line in lines:
             row = json.loads(line)
@@ -872,7 +870,6 @@ class TestBackendNewMethods:
             val = engine.random_float(1.0, 10.0, precision=2)
             assert 1.0 <= val <= 10.0
             # Check precision: should have at most 2 decimal places
-            s = f"{val:.10f}"
             # After rounding, the value multiplied by 100 should be int-like
             assert abs(val * 100 - round(val * 100)) < 1e-9
 

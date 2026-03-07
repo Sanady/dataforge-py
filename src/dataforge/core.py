@@ -830,6 +830,80 @@ class DataForge:
 
         return RelationalSchema(self, tables)
 
+    def schema_from_dict(
+        self,
+        d: dict[str, Any],
+    ) -> "Any":
+        """Create a :class:`Schema` from a schema definition dict.
+
+        The dict format matches what :meth:`Schema.to_schema_dict`
+        produces, and what :func:`dataforge.schema_io.load_schema`
+        reads from JSON/YAML/TOML files.
+
+        Parameters
+        ----------
+        d : dict[str, Any]
+            Schema definition with ``fields``, optional ``count``,
+            ``null_fields``, and ``unique_together`` keys.
+
+        Returns
+        -------
+        Schema
+
+        Examples
+        --------
+        >>> forge = DataForge(seed=42)
+        >>> s = forge.schema_from_dict({
+        ...     "fields": {"name": "full_name", "email": "email"},
+        ...     "count": 100,
+        ... })
+        >>> rows = s.generate()  # uses count from dict
+        """
+        from dataforge.schema import Schema
+        from dataforge.schema_io import dict_to_schema_args
+
+        fields, _count, null_fields, unique_together = dict_to_schema_args(d)
+        return Schema(
+            self,
+            fields,
+            null_fields=null_fields,
+            unique_together=unique_together,
+        )
+
+    def schema_from_file(
+        self,
+        path: str,
+        format: str | None = None,
+    ) -> "Any":
+        """Create a :class:`Schema` by loading a schema definition file.
+
+        Supports JSON, YAML, and TOML formats.  The format is
+        auto-detected from the file extension when *format* is
+        ``None``.
+
+        Parameters
+        ----------
+        path : str
+            Path to the schema definition file.
+        format : str | None
+            Input format (``"json"``, ``"yaml"``, ``"toml"``).
+            Auto-detected from extension when ``None``.
+
+        Returns
+        -------
+        Schema
+
+        Examples
+        --------
+        >>> forge = DataForge(seed=42)
+        >>> s = forge.schema_from_file("my_schema.yaml")
+        >>> rows = s.generate(count=100)
+        """
+        from dataforge.schema_io import load_schema
+
+        d = load_schema(path, format=format)
+        return self.schema_from_dict(d)
+
     # ------------------------------------------------------------------
     # Locale management
     # ------------------------------------------------------------------

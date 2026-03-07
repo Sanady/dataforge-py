@@ -129,6 +129,7 @@ class Schema:
         "_rng",
         "_unique_together",
         "_unique_together_indices",
+        "_fields_spec",
     )
 
     def __init__(
@@ -168,6 +169,9 @@ class Schema:
         self._columns: tuple[str, ...] = tuple(columns)
         self._callables: tuple[object, ...] = tuple(callables)
         self._row_lambdas: dict[int, Callable[..., Any]] = row_lambdas
+
+        # Remember the original field spec for schema serialization
+        self._fields_spec: list[str] | dict[str, Any] = fields
 
         # Nullable field support: store (column_index, probability) pairs
         # and the RNG for fast null injection
@@ -355,7 +359,6 @@ class Schema:
             for idx_group in self._unique_together_indices:
                 seen: set[tuple[Any, ...]] = set()
                 dup_indices: list[int] = []
-                col_names = tuple(columns[i] for i in idx_group)
                 for i, row in enumerate(rows):
                     key = tuple(row[columns[j]] for j in idx_group)
                     if key in seen:
@@ -950,6 +953,90 @@ class Schema:
                 remaining -= chunk
 
         return written
+
+    # ------------------------------------------------------------------
+    # Schema serialization
+    # ------------------------------------------------------------------
+
+    def to_schema_dict(self, count: int = 10) -> dict[str, Any]:
+        """Export this schema's definition as a serializable dict.
+
+        The returned dict can be saved to JSON/YAML/TOML via
+        :func:`dataforge.schema_io.save_schema` and later loaded
+        to recreate an equivalent schema.
+
+        Callable (lambda) fields are **not** serializable and are
+        silently omitted.
+
+        Parameters
+        ----------
+        count : int
+            Default row count to include in the dict.
+
+        Returns
+        -------
+        dict[str, Any]
+        """
+        from dataforge.schema_io import schema_to_dict
+
+        fields = self._fields_spec
+        # Filter out lambdas — they can't be serialized
+        if isinstance(fields, dict):
+            serializable: list[str] | dict[str, str] = {
+                k: v for k, v in fields.items() if isinstance(v, str)
+            }
+        else:
+            serializable = list(fields)
+
+        # Reverse-map null_fields from index → column name
+        null_fields: dict[str, float] | None = None
+        if self._null_fields:
+            columns = self._columns
+            null_fields = {
+                columns[idx]: prob for idx, prob in self._null_fields.items()
+            }
+
+        # Reverse-map unique_together from index tuples → name tuples
+        unique_together: list[tuple[str, ...]] | None = None
+        if self._unique_together:
+            columns = self._columns
+            unique_together = [
+                tuple(columns[i] for i in group) for group in self._unique_together
+            ]
+
+        return schema_to_dict(
+            fields=serializable,
+            count=count,
+            null_fields=null_fields,
+            unique_together=unique_together,
+        )
+
+    def save_schema(
+        self,
+        path: str,
+        count: int = 10,
+        format: str | None = None,
+    ) -> None:
+        """Save this schema's definition to a file.
+
+        Supports JSON, YAML, and TOML formats.  The format is
+        auto-detected from the file extension when *format* is
+        ``None``.
+
+        Parameters
+        ----------
+        path : str
+            File path to write.
+        count : int
+            Default row count to include in the definition.
+        format : str | None
+            Output format (``"json"``, ``"yaml"``, ``"toml"``).
+            Auto-detected from extension when ``None``.
+        """
+        from dataforge.schema_io import save_schema
+
+        d = self.to_schema_dict(count=count)
+        save_schema(d, path, format=format)
 
     def __repr__(self) -> str:
         return f"Schema(columns={list(self._columns)!r})"
