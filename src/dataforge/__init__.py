@@ -15,10 +15,15 @@ Usage::
     # Introspection
     DataForge.list_providers()          # ["address", "company", ...]
     DataForge.list_fields()             # {"first_name": ("person", ...), ...}
+
+    # Relational data
+    from dataforge import RelationalSchema
+    rel = forge.relational({...})       # multi-table with FKs
 """
 
 from dataforge.core import DataForge
 from dataforge.schema import Schema
+from dataforge.relational import RelationalSchema
 
 __version__ = "0.3.0"
-__all__ = ["DataForge", "Schema", "__version__"]
+__all__ = ["DataForge", "Schema", "RelationalSchema", "__version__"]

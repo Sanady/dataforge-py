@@ -677,6 +677,7 @@ class DataForge:
         self,
         fields: "list[str] | dict[str, Any]",
         null_fields: "dict[str, float] | None" = None,
+        unique_together: "list[tuple[str, ...]] | None" = None,
     ) -> "Any":
         """Create a pre-resolved :class:`Schema` for maximum throughput.
 
@@ -690,6 +691,10 @@ class DataForge:
             Optional mapping of column names to null probabilities
             (0.0–1.0).  Example: ``{"email": 0.3}`` makes ~30% of
             email values ``None``.
+        unique_together : list[tuple[str, ...]] | None
+            Optional list of column-name tuples whose combinations
+            must be unique.  Example: ``[("first_name", "last_name")]``
+            ensures no two rows share the same name pair.
 
         Returns
         -------
@@ -707,10 +712,69 @@ class DataForge:
         ...                  null_fields={"email": 0.2})
         >>> rows = s.generate(count=100)
         >>> none_count = sum(1 for r in rows if r["email"] is None)
+
+        Unique combinations:
+
+        >>> s = forge.schema(["first_name", "last_name", "email"],
+        ...                  unique_together=[("first_name", "last_name")])
+        >>> rows = s.generate(count=50)
         """
         from dataforge.schema import Schema
 
-        return Schema(self, fields, null_fields=null_fields)
+        return Schema(
+            self,
+            fields,
+            null_fields=null_fields,
+            unique_together=unique_together,
+        )
+
+    def relational(
+        self,
+        tables: "dict[str, dict[str, Any]]",
+    ) -> "Any":
+        """Create a :class:`RelationalSchema` for multi-table generation.
+
+        Generates related tables with referential integrity.  Parent
+        tables are generated first; child tables receive foreign keys
+        pointing to parent rows.
+
+        Parameters
+        ----------
+        tables : dict[str, dict]
+            Table specifications.  Each spec can include:
+
+            - ``fields`` — list or dict of field specs (same as Schema)
+            - ``count`` — number of rows (default: 10)
+            - ``parent`` — name of the parent table (creates a FK)
+            - ``parent_key`` — FK column name (default: ``{parent}_id``)
+            - ``children_per_parent`` — ``(min, max)`` cardinality bounds
+            - ``null_fields`` — per-field null probabilities
+
+        Returns
+        -------
+        RelationalSchema
+
+        Examples
+        --------
+        >>> forge = DataForge(seed=42)
+        >>> rel = forge.relational({
+        ...     "users": {
+        ...         "fields": ["first_name", "last_name", "email"],
+        ...         "count": 10,
+        ...     },
+        ...     "orders": {
+        ...         "fields": ["date", "city"],
+        ...         "count": 30,
+        ...         "parent": "users",
+        ...     },
+        ... })
+        >>> data = rel.generate()
+        >>> len(data["users"])
+        10
+        """
+        from dataforge.relational import RelationalSchema
+
+        return RelationalSchema(self, tables)
 
     # ------------------------------------------------------------------
     # Locale management

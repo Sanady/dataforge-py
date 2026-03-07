@@ -112,15 +112,31 @@ class Schema:
         (0.0–1.0).  After generation, values in the specified columns
         are randomly replaced with ``None`` at the given rate.
         Example: ``{"email": 0.2}`` makes ~20% of email values ``None``.
+    unique_together : list[tuple[str, ...]] | None
+        Optional list of column-name tuples that must be unique
+        **in combination**.  For example,
+        ``[("first_name", "last_name")]`` ensures no two rows share
+        the same (first_name, last_name) pair.  Rows that violate
+        the constraint are re-generated up to a configurable retry
+        limit.
     """
 
-    __slots__ = ("_columns", "_callables", "_row_lambdas", "_null_fields", "_rng")
+    __slots__ = (
+        "_columns",
+        "_callables",
+        "_row_lambdas",
+        "_null_fields",
+        "_rng",
+        "_unique_together",
+        "_unique_together_indices",
+    )
 
     def __init__(
         self,
         forge: DataForge,
         fields: "list[str] | dict[str, Any]",
         null_fields: "dict[str, float] | None" = None,
+        unique_together: "list[tuple[str, ...]] | None" = None,
     ) -> None:
         # Normalize to (column_name, field_spec) pairs
         if isinstance(fields, list):
@@ -172,6 +188,24 @@ class Schema:
             }
         else:
             self._null_fields = {}
+
+        # unique_together: pre-compute column index tuples for fast lookup
+        if unique_together:
+            col_set = set(columns)
+            idx_groups: list[tuple[int, ...]] = []
+            for group in unique_together:
+                for name in group:
+                    if name not in col_set:
+                        raise ValueError(
+                            f"unique_together column '{name}' is not in this Schema. "
+                            f"Available columns: {list(columns)}"
+                        )
+                idx_groups.append(tuple(columns.index(name) for name in group))
+            self._unique_together: list[tuple[int, ...]] = idx_groups
+            self._unique_together_indices = idx_groups
+        else:
+            self._unique_together = []
+            self._unique_together_indices = []
 
     # ------------------------------------------------------------------
     # Core generation
@@ -279,6 +313,10 @@ class Schema:
         Values are preserved in their native Python types (``int``,
         ``float``, ``bool``, ``str``, etc.).
 
+        When ``unique_together`` constraints are active, duplicate
+        combinations are detected and replaced with freshly generated
+        rows (up to 100 retry rounds).
+
         Parameters
         ----------
         count : int
@@ -296,7 +334,59 @@ class Schema:
 
         # Zip columns into row dicts — transposed vectorized assembly
         rows = [dict(zip(columns, row)) for row in zip(*col_data)]
-        return self._apply_row_lambdas(rows)
+        rows = self._apply_row_lambdas(rows)
+
+        # Enforce unique_together constraints
+        if self._unique_together:
+            rows = self._enforce_unique_together(rows, count)
+
+        return rows
+
+    def _enforce_unique_together(
+        self, rows: list[dict[str, Any]], target: int
+    ) -> list[dict[str, Any]]:
+        """Re-generate rows until all unique_together constraints are met."""
+        columns = self._columns
+        _MAX_ROUNDS = 100
+
+        for _round in range(_MAX_ROUNDS):
+            # Check each constraint group
+            all_ok = True
+            for idx_group in self._unique_together_indices:
+                seen: set[tuple[Any, ...]] = set()
+                dup_indices: list[int] = []
+                col_names = tuple(columns[i] for i in idx_group)
+                for i, row in enumerate(rows):
+                    key = tuple(row[columns[j]] for j in idx_group)
+                    if key in seen:
+                        dup_indices.append(i)
+                    else:
+                        seen.add(key)
+
+                if dup_indices:
+                    all_ok = False
+                    # Re-generate only the duplicate rows
+                    n_dups = len(dup_indices)
+                    new_col_data = self._generate_columns(n_dups)
+                    new_rows = [dict(zip(columns, row)) for row in zip(*new_col_data)]
+                    new_rows = self._apply_row_lambdas(new_rows)
+                    for i, new_row in zip(dup_indices, new_rows):
+                        rows[i] = new_row
+
+            if all_ok:
+                return rows
+
+        # After max rounds, return what we have (best-effort)
+        import warnings
+
+        warnings.warn(
+            f"unique_together constraint could not be fully satisfied "
+            f"after {_MAX_ROUNDS} rounds. Some duplicate combinations "
+            f"may remain.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return rows
 
     def stream(
         self,
