@@ -142,7 +142,7 @@ _FIELD_ALIASES: dict[str, str] = {
 # Keys are (module, qualname) tuples for non-builtin types.
 
 _TYPE_FALLBACK_BUILTINS: dict[type, str] = {
-    str: "sentence",
+    str: "misc.random_element",  # sentinel — too ambiguous
     int: "misc.random_element",  # sentinel — handled specially
     float: "misc.random_element",  # sentinel — handled specially
     bool: "boolean",
@@ -195,9 +195,9 @@ def _resolve_type_annotation(annotation: Any) -> type | None:
 def _type_fallback(annotation: Any) -> str | None:
     """Map a Python type annotation to a DataForge field name.
 
-    Returns ``None`` if no sensible fallback exists.  For ``int`` and
-    ``float``, returns ``None`` because bare numeric types are too
-    ambiguous to guess meaningfully.
+    Returns ``None`` if no sensible fallback exists.  For ``str``,
+    ``int``, and ``float``, returns ``None`` because bare types are
+    too ambiguous to guess meaningfully.
     """
     concrete = _resolve_type_annotation(annotation)
     if concrete is None:
@@ -251,7 +251,7 @@ def _sqlalchemy_type_fallback(column: "Any") -> str | None:
     type_name = col_type.__name__
 
     _SA_TYPE_MAP: dict[str, str] = {
-        "String": "sentence",
+        "String": None,  # type: ignore[dict-item]  # too ambiguous
         "Text": "paragraph",
         "Integer": None,  # type: ignore[dict-item]  # too ambiguous
         "BigInteger": None,  # type: ignore[dict-item]

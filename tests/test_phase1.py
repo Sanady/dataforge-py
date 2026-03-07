@@ -1021,10 +1021,11 @@ class TestTypeResolution:
 
         assert _type_fallback(bool) == "boolean"
 
-    def test_type_fallback_str(self) -> None:
+    def test_type_fallback_str_returns_none(self) -> None:
+        """str is too ambiguous — should return None."""
         from dataforge.core import _type_fallback
 
-        assert _type_fallback(str) == "sentence"
+        assert _type_fallback(str) is None
 
     def test_type_fallback_int_returns_none(self) -> None:
         """int is too ambiguous — should return None."""
