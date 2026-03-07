@@ -673,7 +673,11 @@ class DataForge:
     # Schema API
     # ------------------------------------------------------------------
 
-    def schema(self, fields: "list[str] | dict[str, Any]") -> "Any":
+    def schema(
+        self,
+        fields: "list[str] | dict[str, Any]",
+        null_fields: "dict[str, float] | None" = None,
+    ) -> "Any":
         """Create a pre-resolved :class:`Schema` for maximum throughput.
 
         Parameters
@@ -682,6 +686,10 @@ class DataForge:
             Fields to generate.  String values are resolved to provider
             methods.  Callable values receive the current row dict and
             can reference previously generated columns.
+        null_fields : dict[str, float] | None
+            Optional mapping of column names to null probabilities
+            (0.0–1.0).  Example: ``{"email": 0.3}`` makes ~30% of
+            email values ``None``.
 
         Returns
         -------
@@ -692,10 +700,17 @@ class DataForge:
         >>> forge = DataForge(seed=42)
         >>> s = forge.schema(["first_name", "email"])
         >>> rows = s.generate(count=1000)
+
+        Nullable fields:
+
+        >>> s = forge.schema(["first_name", "email"],
+        ...                  null_fields={"email": 0.2})
+        >>> rows = s.generate(count=100)
+        >>> none_count = sum(1 for r in rows if r["email"] is None)
         """
         from dataforge.schema import Schema
 
-        return Schema(self, fields)
+        return Schema(self, fields, null_fields=null_fields)
 
     # ------------------------------------------------------------------
     # Locale management
@@ -812,6 +827,8 @@ class DataForge:
         count: int = 10,
         path: str | None = None,
         indent: int = 2,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> str:
         """Generate fake data and return as a JSON array.
 
@@ -827,13 +844,24 @@ class DataForge:
             If provided, write JSON to this file path.
         indent : int
             JSON indentation level (default: 2).
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
         str
             The JSON content as a string.
         """
-        return self.schema(fields).to_json(count=count, path=path, indent=indent)
+        return self.schema(fields).to_json(
+            count=count,
+            path=path,
+            indent=indent,
+            encoding=encoding,
+            compress=compress,
+        )
 
     def to_csv(
         self,
@@ -841,6 +869,8 @@ class DataForge:
         count: int = 10,
         path: str | None = None,
         delimiter: str = ",",
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> str:
         """Generate fake data and return (or write) as CSV.
 
@@ -857,19 +887,32 @@ class DataForge:
             the CSV as a string.
         delimiter : str
             Field delimiter (default: comma).
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
         str
             The CSV content as a string.
         """
-        return self.schema(fields).to_csv(count=count, path=path, delimiter=delimiter)
+        return self.schema(fields).to_csv(
+            count=count,
+            path=path,
+            delimiter=delimiter,
+            encoding=encoding,
+            compress=compress,
+        )
 
     def to_jsonl(
         self,
         fields: list[str] | dict[str, str],
         count: int = 10,
         path: str | None = None,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> str:
         """Generate fake data and return (or write) as JSON Lines.
 
@@ -883,13 +926,23 @@ class DataForge:
             Number of rows.
         path : str | None
             If provided, write JSONL to this file path.
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
         str
             The JSONL content as a string.
         """
-        return self.schema(fields).to_jsonl(count=count, path=path)
+        return self.schema(fields).to_jsonl(
+            count=count,
+            path=path,
+            encoding=encoding,
+            compress=compress,
+        )
 
     def to_sql(
         self,
@@ -898,6 +951,8 @@ class DataForge:
         count: int = 10,
         dialect: str = "sqlite",
         path: str | None = None,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> str:
         """Generate fake data and return as SQL INSERT statements.
 
@@ -915,6 +970,11 @@ class DataForge:
             SQL dialect: ``"sqlite"``, ``"mysql"``, or ``"postgresql"``.
         path : str | None
             If provided, write SQL to this file path.
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -922,7 +982,12 @@ class DataForge:
             SQL INSERT statements as a string.
         """
         return self.schema(fields).to_sql(
-            table=table, count=count, dialect=dialect, path=path
+            table=table,
+            count=count,
+            dialect=dialect,
+            path=path,
+            encoding=encoding,
+            compress=compress,
         )
 
     def to_dataframe(
@@ -956,6 +1021,8 @@ class DataForge:
         count: int = 10,
         batch_size: int | None = None,
         delimiter: str = ",",
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> int:
         """Stream fake data directly to a CSV file.
 
@@ -974,6 +1041,11 @@ class DataForge:
             Rows per batch.  Auto-tuned when ``None``.
         delimiter : str
             Field delimiter (default: comma).
+        encoding : str
+            Character encoding (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -981,7 +1053,12 @@ class DataForge:
             Number of rows written.
         """
         return self.schema(fields).stream_to_csv(
-            path=path, count=count, batch_size=batch_size, delimiter=delimiter
+            path=path,
+            count=count,
+            batch_size=batch_size,
+            delimiter=delimiter,
+            encoding=encoding,
+            compress=compress,
         )
 
     def stream_to_jsonl(
@@ -990,6 +1067,8 @@ class DataForge:
         path: str,
         count: int = 10,
         batch_size: int | None = None,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> int:
         """Stream fake data directly to a JSON Lines file.
 
@@ -1006,6 +1085,11 @@ class DataForge:
             Number of rows.
         batch_size : int | None
             Rows per batch.  Auto-tuned when ``None``.
+        encoding : str
+            Character encoding (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -1013,7 +1097,11 @@ class DataForge:
             Number of rows written.
         """
         return self.schema(fields).stream_to_jsonl(
-            path=path, count=count, batch_size=batch_size
+            path=path,
+            count=count,
+            batch_size=batch_size,
+            encoding=encoding,
+            compress=compress,
         )
 
     def to_arrow(

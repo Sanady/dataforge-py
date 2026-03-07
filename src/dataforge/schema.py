@@ -27,7 +27,10 @@ Usage::
 
 from __future__ import annotations
 
+import gzip as _gzip
+import io as _io
 from collections.abc import AsyncIterator, Callable, Iterator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -35,6 +38,54 @@ if TYPE_CHECKING:
 
 # Sentinel for columns that depend on the current row
 _ROW_LAMBDA = object()
+
+
+@contextmanager
+def _open_file(
+    path: str,
+    mode: str = "w",
+    encoding: str = "utf-8",
+    compress: bool | None = None,
+    newline: str | None = None,
+) -> Iterator[Any]:
+    """Context manager that opens a file, auto-detecting gzip from extension.
+
+    Parameters
+    ----------
+    path : str
+        File path.  If it ends with ``.gz``, gzip compression is used
+        unless *compress* is explicitly ``False``.
+    mode : str
+        Open mode (``"w"`` or ``"wb"``).
+    encoding : str
+        Text encoding (ignored for binary modes).
+    compress : bool | None
+        Force gzip on/off.  ``None`` = auto-detect from extension.
+    newline : str | None
+        Newline mode for text files (e.g. ``""`` for CSV).
+    """
+    use_gzip = compress if compress is not None else path.endswith(".gz")
+    if use_gzip:
+        # gzip.open returns a binary stream; wrap in TextIOWrapper for text mode
+        if "b" not in mode:
+            raw = _gzip.open(path, mode + "b")
+            f: Any = _io.TextIOWrapper(raw, encoding=encoding, newline=newline)  # type: ignore[arg-type]
+            try:
+                yield f
+            finally:
+                f.close()  # closes underlying raw too
+        else:
+            f = _gzip.open(path, mode)  # type: ignore[assignment]
+            try:
+                yield f
+            finally:
+                f.close()
+    else:
+        f = open(path, mode, encoding=encoding, newline=newline)  # type: ignore[assignment]
+        try:
+            yield f
+        finally:
+            f.close()
 
 
 class Schema:
@@ -56,14 +107,20 @@ class Schema:
         Fields to generate.  String values are resolved to provider
         methods.  Callable values receive the current row dict and
         can reference previously generated columns.
+    null_fields : dict[str, float] | None
+        Optional mapping of column names to null probabilities
+        (0.0–1.0).  After generation, values in the specified columns
+        are randomly replaced with ``None`` at the given rate.
+        Example: ``{"email": 0.2}`` makes ~20% of email values ``None``.
     """
 
-    __slots__ = ("_columns", "_callables", "_row_lambdas")
+    __slots__ = ("_columns", "_callables", "_row_lambdas", "_null_fields", "_rng")
 
     def __init__(
         self,
         forge: DataForge,
         fields: "list[str] | dict[str, Any]",
+        null_fields: "dict[str, float] | None" = None,
     ) -> None:
         # Normalize to (column_name, field_spec) pairs
         if isinstance(fields, list):
@@ -95,6 +152,26 @@ class Schema:
         self._columns: tuple[str, ...] = tuple(columns)
         self._callables: tuple[object, ...] = tuple(callables)
         self._row_lambdas: dict[int, Callable[..., Any]] = row_lambdas
+
+        # Nullable field support: store (column_index, probability) pairs
+        # and the RNG for fast null injection
+        self._rng = forge._engine._rng
+        if null_fields:
+            # Validate all column names exist
+            col_set = set(columns)
+            for name in null_fields:
+                if name not in col_set:
+                    raise ValueError(
+                        f"null_fields key '{name}' is not a column in this Schema. "
+                        f"Available columns: {list(columns)}"
+                    )
+            self._null_fields: dict[int, float] = {
+                columns.index(name): prob
+                for name, prob in null_fields.items()
+                if 0.0 < prob <= 1.0
+            }
+        else:
+            self._null_fields = {}
 
     # ------------------------------------------------------------------
     # Core generation
@@ -135,6 +212,17 @@ class Schema:
             else:
                 values = fn(count=count)  # type: ignore[operator]
                 col_data.append(values if isinstance(values, list) else [values])
+
+        # Apply null injection if any null_fields are configured
+        null_fields = self._null_fields
+        if null_fields:
+            _random = self._rng.random
+            for col_idx, prob in null_fields.items():
+                col = col_data[col_idx]
+                for i in range(count):
+                    if _random() < prob:
+                        col[i] = None
+
         return col_data
 
     @staticmethod
@@ -326,6 +414,8 @@ class Schema:
         count: int = 10,
         path: str | None = None,
         delimiter: str = ",",
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> str:
         """Generate rows and return as CSV string.
 
@@ -337,6 +427,11 @@ class Schema:
             Optional file path to write.
         delimiter : str
             Field delimiter (default: comma).
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -361,7 +456,9 @@ class Schema:
         content = buf.getvalue()
 
         if path is not None:
-            with open(path, "w", encoding="utf-8", newline="") as f:
+            with _open_file(
+                path, "w", encoding=encoding, compress=compress, newline=""
+            ) as f:
                 f.write(content)
 
         return content
@@ -372,6 +469,8 @@ class Schema:
         count: int = 10,
         batch_size: int | None = None,
         delimiter: str = ",",
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> int:
         """Stream rows to a CSV file without materializing all data.
 
@@ -388,6 +487,11 @@ class Schema:
             Internal batch size.  Auto-tuned when ``None``.
         delimiter : str
             Field delimiter (default: comma).
+        encoding : str
+            Character encoding (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -405,7 +509,9 @@ class Schema:
         written = 0
         row_lambdas = self._row_lambdas
         _str = str
-        with open(path, "w", encoding="utf-8", newline="") as f:
+        with _open_file(
+            path, "w", encoding=encoding, compress=compress, newline=""
+        ) as f:
             writer = csv.writer(f, delimiter=delimiter)
             writer.writerow(columns)
 
@@ -430,7 +536,13 @@ class Schema:
 
         return written
 
-    def to_jsonl(self, count: int = 10, path: str | None = None) -> str:
+    def to_jsonl(
+        self,
+        count: int = 10,
+        path: str | None = None,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
+    ) -> str:
         """Generate rows and return as JSON Lines string.
 
         Values are serialized in their native types — integers stay
@@ -442,6 +554,11 @@ class Schema:
             Number of rows.
         path : str | None
             Optional file path to write.
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -457,12 +574,19 @@ class Schema:
             content += "\n"
 
         if path is not None:
-            with open(path, "w", encoding="utf-8") as f:
+            with _open_file(path, "w", encoding=encoding, compress=compress) as f:
                 f.write(content)
 
         return content
 
-    def to_json(self, count: int = 10, path: str | None = None, indent: int = 2) -> str:
+    def to_json(
+        self,
+        count: int = 10,
+        path: str | None = None,
+        indent: int = 2,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
+    ) -> str:
         """Generate rows and return as a JSON array string.
 
         Parameters
@@ -473,6 +597,11 @@ class Schema:
             Optional file path to write.
         indent : int
             JSON indentation level (default: 2).
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -484,7 +613,7 @@ class Schema:
         content = json.dumps(rows, indent=indent, ensure_ascii=False)
 
         if path is not None:
-            with open(path, "w", encoding="utf-8") as f:
+            with _open_file(path, "w", encoding=encoding, compress=compress) as f:
                 f.write(content)
 
         return content
@@ -494,6 +623,8 @@ class Schema:
         path: str,
         count: int = 10,
         batch_size: int | None = None,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> int:
         """Stream rows to a JSON Lines file without materializing all data.
 
@@ -508,6 +639,11 @@ class Schema:
             Total number of rows.
         batch_size : int | None
             Internal batch size.  Auto-tuned when ``None``.
+        encoding : str
+            Character encoding (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -525,7 +661,7 @@ class Schema:
         _dumps = json.dumps
         written = 0
         row_lambdas = self._row_lambdas
-        with open(path, "w", encoding="utf-8") as f:
+        with _open_file(path, "w", encoding=encoding, compress=compress) as f:
             _write = f.write
             remaining = count
             while remaining > 0:
@@ -560,6 +696,8 @@ class Schema:
         count: int = 10,
         dialect: str = "sqlite",
         path: str | None = None,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> str:
         """Generate rows and return as SQL INSERT statements.
 
@@ -573,6 +711,11 @@ class Schema:
             SQL dialect: ``"sqlite"``, ``"mysql"``, or ``"postgresql"``.
         path : str | None
             If provided, write SQL to this file path.
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -614,7 +757,7 @@ class Schema:
         content = "\n".join(parts) + "\n"
 
         if path is not None:
-            with open(path, "w", encoding="utf-8") as f:
+            with _open_file(path, "w", encoding=encoding, compress=compress) as f:
                 f.write(content)
 
         return content

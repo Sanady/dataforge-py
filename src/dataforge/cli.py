@@ -140,6 +140,23 @@ def _build_parser() -> argparse.ArgumentParser:
         "Requires --output.",
     )
     parser.add_argument(
+        "--encoding",
+        default="utf-8",
+        help="Character encoding for file output (default: utf-8).",
+    )
+    parser.add_argument(
+        "--compress",
+        action="store_true",
+        help="Gzip-compress file output. Auto-detected if --output ends with .gz.",
+    )
+    parser.add_argument(
+        "--null-fields",
+        default=None,
+        metavar="SPEC",
+        help='Make fields nullable. Format: "email:0.2,phone:0.5" '
+        "(field_name:probability pairs, comma-separated).",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"dataforge {__version__}",
@@ -227,42 +244,85 @@ def main(argv: list[str] | None = None) -> int:
     else:
         fields_arg = field_names
 
+    # Parse --null-fields
+    null_fields: dict[str, float] | None = None
+    if args.null_fields:
+        null_fields = {}
+        for pair in args.null_fields.split(","):
+            pair = pair.strip()
+            if ":" not in pair:
+                print(
+                    f"Error: invalid --null-fields format '{pair}'. "
+                    "Expected 'field_name:probability'.",
+                    file=sys.stderr,
+                )
+                return 1
+            name, prob_str = pair.split(":", 1)
+            try:
+                prob = float(prob_str)
+            except ValueError:
+                print(
+                    f"Error: invalid probability '{prob_str}' for field '{name}'.",
+                    file=sys.stderr,
+                )
+                return 1
+            if not 0.0 <= prob <= 1.0:
+                print(
+                    f"Error: probability for '{name}' must be between 0.0 and 1.0, "
+                    f"got {prob}.",
+                    file=sys.stderr,
+                )
+                return 1
+            null_fields[name.strip()] = prob
+
     # Resolve delimiter
     delimiter = args.delimiter
     if delimiter is None:
         delimiter = "\t" if args.format == "tsv" else ","
 
+    # Resolve encoding and compression
+    encoding = args.encoding
+    compress: bool | None = True if args.compress else None
+
     # --stream mode: write directly to file
     if args.stream:
         fmt = args.format
         path = args.output
+        schema = forge.schema(fields_arg, null_fields=null_fields)
         if fmt in ("csv", "tsv"):
-            written = forge.stream_to_csv(
-                fields_arg,
+            written = schema.stream_to_csv(
                 path=path,
                 count=args.count,
                 delimiter=delimiter,
+                encoding=encoding,
+                compress=compress,
             )
             _progress_done(written)
         elif fmt == "jsonl":
-            written = forge.stream_to_jsonl(
-                fields_arg,
+            written = schema.stream_to_jsonl(
                 path=path,
                 count=args.count,
+                encoding=encoding,
+                compress=compress,
             )
             _progress_done(written)
         elif fmt == "json":
             # JSON array can't easily stream, but we can generate
             # and write — still respects --output
-            content = forge.to_json(fields_arg, count=args.count)
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(content)
+            schema_j = forge.schema(fields_arg, null_fields=null_fields)
+            content = schema_j.to_json(
+                count=args.count,
+                path=path,
+                encoding=encoding,
+                compress=compress,
+            )
             _progress_done(args.count)
         elif fmt == "text":
             # Stream text rows to file
-            schema = forge.schema(fields_arg)
+            from dataforge.schema import _open_file
+
             written = 0
-            with open(path, "w", encoding="utf-8") as f:
+            with _open_file(path, "w", encoding=encoding, compress=compress) as f:
                 for row in schema.stream(args.count):
                     vals = [_format_value(row[h]) for h in headers]
                     f.write("\t".join(vals) + "\n")
@@ -273,7 +333,7 @@ def main(argv: list[str] | None = None) -> int:
     # Non-streaming mode: generate all data in memory
     if args.unique:
         # Generate with unique proxy — row at a time
-        schema = forge.schema(fields_arg)
+        schema = forge.schema(fields_arg, null_fields=null_fields)
         rows: list[dict[str, object]] = []
         seen: dict[str, set[object]] = {h: set() for h in headers}
         attempts = 0
@@ -297,12 +357,20 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
     else:
-        rows = forge.to_dict(fields_arg, count=args.count)
+        schema_gen = forge.schema(fields_arg, null_fields=null_fields)
+        rows = schema_gen.generate(count=args.count)
 
     # Determine output destination
     out_file = None
     if args.output:
-        out_file = open(args.output, "w", encoding="utf-8", newline="")
+        from dataforge.schema import _open_file
+
+        _ctx = _open_file(
+            args.output, "w", encoding=encoding, compress=compress, newline=""
+        )
+        out_file = _ctx.__enter__()
+    else:
+        _ctx = None
     out = out_file or sys.stdout
 
     try:
@@ -363,8 +431,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
 
         elif fmt == "sql":
-            schema = forge.schema(fields_arg)
-            sql = schema.to_sql(
+            schema_sql = forge.schema(fields_arg, null_fields=null_fields)
+            sql = schema_sql.to_sql(
                 table=args.table,
                 count=args.count,
                 dialect=args.dialect,
@@ -372,8 +440,8 @@ def main(argv: list[str] | None = None) -> int:
             print(sql, end="", file=out)
 
     finally:
-        if out_file is not None:
-            out_file.close()
+        if _ctx is not None:
+            _ctx.__exit__(None, None, None)
 
     return 0
 
