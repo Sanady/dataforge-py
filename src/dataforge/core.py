@@ -296,6 +296,15 @@ if TYPE_CHECKING:
     from dataforge.providers.ai_prompt import AiPromptProvider
     from dataforge.providers.llm import LlmProvider
     from dataforge.providers.ai_chat import AiChatProvider
+    from dataforge.providers.social_media import SocialMediaProvider
+    from dataforge.providers.music import MusicProvider
+    from dataforge.providers.sports import SportsProvider
+    from dataforge.providers.food import FoodProvider
+    from dataforge.providers.legal import LegalProvider
+    from dataforge.providers.real_estate import RealEstateProvider
+    from dataforge.providers.weather import WeatherProvider
+    from dataforge.providers.hardware import HardwareProvider
+    from dataforge.providers.logistics import LogisticsProvider
 
 
 class DataForge:
@@ -540,6 +549,51 @@ class DataForge:
     def ai_chat(self) -> "AiChatProvider":
         """Access the AI chat provider (conversation turns, messages)."""
         return self._get_provider("ai_chat")  # type: ignore[return-value]
+
+    @property
+    def social_media(self) -> "SocialMediaProvider":
+        """Access the social media provider (platforms, usernames, hashtags)."""
+        return self._get_provider("social_media")  # type: ignore[return-value]
+
+    @property
+    def music(self) -> "MusicProvider":
+        """Access the music provider (genres, artists, albums, songs)."""
+        return self._get_provider("music")  # type: ignore[return-value]
+
+    @property
+    def sports(self) -> "SportsProvider":
+        """Access the sports provider (sports, teams, leagues, venues)."""
+        return self._get_provider("sports")  # type: ignore[return-value]
+
+    @property
+    def food(self) -> "FoodProvider":
+        """Access the food provider (dishes, cuisines, ingredients, restaurants)."""
+        return self._get_provider("food")  # type: ignore[return-value]
+
+    @property
+    def legal(self) -> "LegalProvider":
+        """Access the legal provider (cases, courts, practice areas, firms)."""
+        return self._get_provider("legal")  # type: ignore[return-value]
+
+    @property
+    def real_estate(self) -> "RealEstateProvider":
+        """Access the real estate provider (properties, prices, neighborhoods)."""
+        return self._get_provider("real_estate")  # type: ignore[return-value]
+
+    @property
+    def weather(self) -> "WeatherProvider":
+        """Access the weather provider (conditions, temperature, wind, alerts)."""
+        return self._get_provider("weather")  # type: ignore[return-value]
+
+    @property
+    def hardware(self) -> "HardwareProvider":
+        """Access the hardware provider (CPUs, GPUs, RAM, storage, peripherals)."""
+        return self._get_provider("hardware")  # type: ignore[return-value]
+
+    @property
+    def logistics(self) -> "LogisticsProvider":
+        """Access the logistics provider (carriers, shipping, containers, tracking)."""
+        return self._get_provider("logistics")  # type: ignore[return-value]
 
     # ------------------------------------------------------------------
     # Unique value generation
