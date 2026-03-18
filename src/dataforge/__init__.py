@@ -11,10 +11,33 @@ Usage::
 
     # Unique values
     forge.unique.person.first_name()    # guaranteed unique per call
+
+    # Introspection
+    DataForge.list_providers()          # ["address", "company", ...]
+    DataForge.list_fields()             # {"first_name": ("person", ...), ...}
+
+    # Relational data
+    from dataforge import RelationalSchema
+    rel = forge.relational({...})       # multi-table with FKs
+
+    # Schema serialization
+    from dataforge import save_schema, load_schema
+    schema = forge.schema(["first_name", "email"])
+    schema.save_schema("my_schema.yaml")
+    loaded = forge.schema_from_file("my_schema.yaml")
 """
 
 from dataforge.core import DataForge
 from dataforge.schema import Schema
+from dataforge.relational import RelationalSchema
+from dataforge.schema_io import save_schema, load_schema
 
-__version__ = "0.2.0"
-__all__ = ["DataForge", "Schema", "__version__"]
+__version__ = "0.3.0"
+__all__ = [
+    "DataForge",
+    "Schema",
+    "RelationalSchema",
+    "save_schema",
+    "load_schema",
+    "__version__",
+]

@@ -259,7 +259,7 @@ class TestSchemaLambdaFields:
             os.unlink(path)
 
     def test_lambda_non_string_return(self) -> None:
-        """Lambda returning non-string should be converted to str."""
+        """Lambda returning non-string preserves native type."""
         schema = self.forge.schema(
             {
                 "name": "first_name",
@@ -268,7 +268,8 @@ class TestSchemaLambdaFields:
         )
         rows = schema.generate(count=3)
         for row in rows:
-            assert row["name_len"] == str(len(row["name"]))
+            assert row["name_len"] == len(row["name"])
+            assert isinstance(row["name_len"], int)
 
     def test_lambda_repr(self) -> None:
         """Schema repr should list all columns including lambda ones."""

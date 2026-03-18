@@ -134,6 +134,93 @@ _FIELD_ALIASES: dict[str, str] = {
     "passport_no": "passport_number",
 }
 
+# ------------------------------------------------------------------
+# Type-based fallback mappings for ORM / model introspection
+# ------------------------------------------------------------------
+# When a field name cannot be resolved by name alone, these
+# fallbacks map Python type annotations to sensible DataForge fields.
+# Keys are (module, qualname) tuples for non-builtin types.
+
+_TYPE_FALLBACK_BUILTINS: dict[type, str] = {
+    str: "misc.random_element",  # sentinel — too ambiguous
+    int: "misc.random_element",  # sentinel — handled specially
+    float: "misc.random_element",  # sentinel — handled specially
+    bool: "boolean",
+}
+
+# String-based type name fallbacks for stdlib / common types.
+# Keyed on the type's __qualname__ (works without importing the module).
+_TYPE_FALLBACK_NAMES: dict[str, str] = {
+    "date": "date",
+    "datetime": "datetime",
+    "time": "time",
+    "Decimal": "misc.random_element",  # sentinel
+    "UUID": "uuid4",
+}
+
+
+def _resolve_type_annotation(annotation: Any) -> type | None:
+    """Extract the concrete type from a possibly-wrapped annotation.
+
+    Handles ``Optional[X]``, ``X | None``, ``list[X]``, and plain types.
+    Returns the core type or ``None`` if it cannot be determined.
+    """
+    import typing
+    import types as _types
+
+    origin = getattr(annotation, "__origin__", None)
+
+    # Handle Optional[X] = Union[X, None]
+    if origin is typing.Union or isinstance(annotation, _types.UnionType):
+        args = getattr(annotation, "__args__", ())
+        non_none = [a for a in args if a is not type(None)]
+        if non_none:
+            return _resolve_type_annotation(non_none[0])
+        return None
+
+    # Handle list[X], List[X] — ignore container, use element type
+    if origin is list:
+        args = getattr(annotation, "__args__", ())
+        if args:
+            return _resolve_type_annotation(args[0])
+        return None
+
+    # Plain type
+    if isinstance(annotation, type):
+        return annotation
+
+    return None
+
+
+def _type_fallback(annotation: Any) -> str | None:
+    """Map a Python type annotation to a DataForge field name.
+
+    Returns ``None`` if no sensible fallback exists.  For ``str``,
+    ``int``, and ``float``, returns ``None`` because bare types are
+    too ambiguous to guess meaningfully.
+    """
+    concrete = _resolve_type_annotation(annotation)
+    if concrete is None:
+        return None
+
+    # Check builtin types
+    if concrete in _TYPE_FALLBACK_BUILTINS:
+        result = _TYPE_FALLBACK_BUILTINS[concrete]
+        # Skip ambiguous numeric types — require name-based match
+        if result == "misc.random_element":
+            return None
+        return result
+
+    # Check by qualname (datetime.date, uuid.UUID, etc.)
+    qualname = getattr(concrete, "__qualname__", "")
+    if qualname in _TYPE_FALLBACK_NAMES:
+        result = _TYPE_FALLBACK_NAMES[qualname]
+        if result == "misc.random_element":
+            return None
+        return result
+
+    return None
+
 
 def _pydantic_heuristic(field_name: str) -> str | None:
     """Map a Pydantic field name to a DataForge field name (or None)."""
@@ -152,6 +239,33 @@ def _sqlalchemy_heuristic(col_name: str, column: "Any") -> str | None:
     # Type-based fallback: if the column is an Integer primary key
     # we already skip it.  Other type-based heuristics could go here.
     return None
+
+
+def _sqlalchemy_type_fallback(column: "Any") -> str | None:
+    """Map a SQLAlchemy column type to a DataForge field name.
+
+    Uses the column's type class name to identify common SQL types
+    and map them to appropriate DataForge generators.
+    """
+    col_type = type(column.type)
+    type_name = col_type.__name__
+
+    _SA_TYPE_MAP: dict[str, str] = {
+        "String": None,  # type: ignore[dict-item]  # too ambiguous
+        "Text": "paragraph",
+        "Integer": None,  # type: ignore[dict-item]  # too ambiguous
+        "BigInteger": None,  # type: ignore[dict-item]
+        "SmallInteger": None,  # type: ignore[dict-item]
+        "Float": None,  # type: ignore[dict-item]
+        "Numeric": None,  # type: ignore[dict-item]
+        "Boolean": "boolean",
+        "Date": "date",
+        "DateTime": "datetime",
+        "Time": "time",
+        "Uuid": "uuid4",
+        "UUID": "uuid4",
+    }
+    return _SA_TYPE_MAP.get(type_name)
 
 
 if TYPE_CHECKING:
@@ -182,6 +296,15 @@ if TYPE_CHECKING:
     from dataforge.providers.ai_prompt import AiPromptProvider
     from dataforge.providers.llm import LlmProvider
     from dataforge.providers.ai_chat import AiChatProvider
+    from dataforge.providers.social_media import SocialMediaProvider
+    from dataforge.providers.music import MusicProvider
+    from dataforge.providers.sports import SportsProvider
+    from dataforge.providers.food import FoodProvider
+    from dataforge.providers.legal import LegalProvider
+    from dataforge.providers.real_estate import RealEstateProvider
+    from dataforge.providers.weather import WeatherProvider
+    from dataforge.providers.hardware import HardwareProvider
+    from dataforge.providers.logistics import LogisticsProvider
 
 
 class DataForge:
@@ -427,6 +550,51 @@ class DataForge:
         """Access the AI chat provider (conversation turns, messages)."""
         return self._get_provider("ai_chat")  # type: ignore[return-value]
 
+    @property
+    def social_media(self) -> "SocialMediaProvider":
+        """Access the social media provider (platforms, usernames, hashtags)."""
+        return self._get_provider("social_media")  # type: ignore[return-value]
+
+    @property
+    def music(self) -> "MusicProvider":
+        """Access the music provider (genres, artists, albums, songs)."""
+        return self._get_provider("music")  # type: ignore[return-value]
+
+    @property
+    def sports(self) -> "SportsProvider":
+        """Access the sports provider (sports, teams, leagues, venues)."""
+        return self._get_provider("sports")  # type: ignore[return-value]
+
+    @property
+    def food(self) -> "FoodProvider":
+        """Access the food provider (dishes, cuisines, ingredients, restaurants)."""
+        return self._get_provider("food")  # type: ignore[return-value]
+
+    @property
+    def legal(self) -> "LegalProvider":
+        """Access the legal provider (cases, courts, practice areas, firms)."""
+        return self._get_provider("legal")  # type: ignore[return-value]
+
+    @property
+    def real_estate(self) -> "RealEstateProvider":
+        """Access the real estate provider (properties, prices, neighborhoods)."""
+        return self._get_provider("real_estate")  # type: ignore[return-value]
+
+    @property
+    def weather(self) -> "WeatherProvider":
+        """Access the weather provider (conditions, temperature, wind, alerts)."""
+        return self._get_provider("weather")  # type: ignore[return-value]
+
+    @property
+    def hardware(self) -> "HardwareProvider":
+        """Access the hardware provider (CPUs, GPUs, RAM, storage, peripherals)."""
+        return self._get_provider("hardware")  # type: ignore[return-value]
+
+    @property
+    def logistics(self) -> "LogisticsProvider":
+        """Access the logistics provider (carriers, shipping, containers, tracking)."""
+        return self._get_provider("logistics")  # type: ignore[return-value]
+
     # ------------------------------------------------------------------
     # Unique value generation
     # ------------------------------------------------------------------
@@ -559,7 +727,12 @@ class DataForge:
     # Schema API
     # ------------------------------------------------------------------
 
-    def schema(self, fields: "list[str] | dict[str, Any]") -> "Any":
+    def schema(
+        self,
+        fields: "list[str] | dict[str, Any]",
+        null_fields: "dict[str, float] | None" = None,
+        unique_together: "list[tuple[str, ...]] | None" = None,
+    ) -> "Any":
         """Create a pre-resolved :class:`Schema` for maximum throughput.
 
         Parameters
@@ -568,6 +741,14 @@ class DataForge:
             Fields to generate.  String values are resolved to provider
             methods.  Callable values receive the current row dict and
             can reference previously generated columns.
+        null_fields : dict[str, float] | None
+            Optional mapping of column names to null probabilities
+            (0.0–1.0).  Example: ``{"email": 0.3}`` makes ~30% of
+            email values ``None``.
+        unique_together : list[tuple[str, ...]] | None
+            Optional list of column-name tuples whose combinations
+            must be unique.  Example: ``[("first_name", "last_name")]``
+            ensures no two rows share the same name pair.
 
         Returns
         -------
@@ -578,10 +759,150 @@ class DataForge:
         >>> forge = DataForge(seed=42)
         >>> s = forge.schema(["first_name", "email"])
         >>> rows = s.generate(count=1000)
+
+        Nullable fields:
+
+        >>> s = forge.schema(["first_name", "email"],
+        ...                  null_fields={"email": 0.2})
+        >>> rows = s.generate(count=100)
+        >>> none_count = sum(1 for r in rows if r["email"] is None)
+
+        Unique combinations:
+
+        >>> s = forge.schema(["first_name", "last_name", "email"],
+        ...                  unique_together=[("first_name", "last_name")])
+        >>> rows = s.generate(count=50)
         """
         from dataforge.schema import Schema
 
-        return Schema(self, fields)
+        return Schema(
+            self,
+            fields,
+            null_fields=null_fields,
+            unique_together=unique_together,
+        )
+
+    def relational(
+        self,
+        tables: "dict[str, dict[str, Any]]",
+    ) -> "Any":
+        """Create a :class:`RelationalSchema` for multi-table generation.
+
+        Generates related tables with referential integrity.  Parent
+        tables are generated first; child tables receive foreign keys
+        pointing to parent rows.
+
+        Parameters
+        ----------
+        tables : dict[str, dict]
+            Table specifications.  Each spec can include:
+
+            - ``fields`` — list or dict of field specs (same as Schema)
+            - ``count`` — number of rows (default: 10)
+            - ``parent`` — name of the parent table (creates a FK)
+            - ``parent_key`` — FK column name (default: ``{parent}_id``)
+            - ``children_per_parent`` — ``(min, max)`` cardinality bounds
+            - ``null_fields`` — per-field null probabilities
+
+        Returns
+        -------
+        RelationalSchema
+
+        Examples
+        --------
+        >>> forge = DataForge(seed=42)
+        >>> rel = forge.relational({
+        ...     "users": {
+        ...         "fields": ["first_name", "last_name", "email"],
+        ...         "count": 10,
+        ...     },
+        ...     "orders": {
+        ...         "fields": ["date", "city"],
+        ...         "count": 30,
+        ...         "parent": "users",
+        ...     },
+        ... })
+        >>> data = rel.generate()
+        >>> len(data["users"])
+        10
+        """
+        from dataforge.relational import RelationalSchema
+
+        return RelationalSchema(self, tables)
+
+    def schema_from_dict(
+        self,
+        d: dict[str, Any],
+    ) -> "Any":
+        """Create a :class:`Schema` from a schema definition dict.
+
+        The dict format matches what :meth:`Schema.to_schema_dict`
+        produces, and what :func:`dataforge.schema_io.load_schema`
+        reads from JSON/YAML/TOML files.
+
+        Parameters
+        ----------
+        d : dict[str, Any]
+            Schema definition with ``fields``, optional ``count``,
+            ``null_fields``, and ``unique_together`` keys.
+
+        Returns
+        -------
+        Schema
+
+        Examples
+        --------
+        >>> forge = DataForge(seed=42)
+        >>> s = forge.schema_from_dict({
+        ...     "fields": {"name": "full_name", "email": "email"},
+        ...     "count": 100,
+        ... })
+        >>> rows = s.generate()  # uses count from dict
+        """
+        from dataforge.schema import Schema
+        from dataforge.schema_io import dict_to_schema_args
+
+        fields, _count, null_fields, unique_together = dict_to_schema_args(d)
+        return Schema(
+            self,
+            fields,
+            null_fields=null_fields,
+            unique_together=unique_together,
+        )
+
+    def schema_from_file(
+        self,
+        path: str,
+        format: str | None = None,
+    ) -> "Any":
+        """Create a :class:`Schema` by loading a schema definition file.
+
+        Supports JSON, YAML, and TOML formats.  The format is
+        auto-detected from the file extension when *format* is
+        ``None``.
+
+        Parameters
+        ----------
+        path : str
+            Path to the schema definition file.
+        format : str | None
+            Input format (``"json"``, ``"yaml"``, ``"toml"``).
+            Auto-detected from extension when ``None``.
+
+        Returns
+        -------
+        Schema
+
+        Examples
+        --------
+        >>> forge = DataForge(seed=42)
+        >>> s = forge.schema_from_file("my_schema.yaml")
+        >>> rows = s.generate(count=100)
+        """
+        from dataforge.schema_io import load_schema
+
+        d = load_schema(path, format=format)
+        return self.schema_from_dict(d)
 
     # ------------------------------------------------------------------
     # Locale management
@@ -663,12 +984,11 @@ class DataForge:
         self,
         fields: list[str] | dict[str, str],
         count: int = 10,
-    ) -> list[dict[str, str]]:
+    ) -> list[dict[str, Any]]:
         """Generate *count* rows of fake data as a list of dicts.
 
-        Uses **column-first** batch generation for maximum throughput:
-        each field is generated in bulk via its ``count=N`` batch path,
-        then columns are zipped into row dicts.
+        Uses :class:`Schema` internally for zero-duplication.
+        Values are preserved in their native Python types.
 
         Parameters
         ----------
@@ -681,8 +1001,8 @@ class DataForge:
 
         Returns
         -------
-        list[dict[str, str]]
-            Each dict maps column name → generated value.
+        list[dict[str, Any]]
+            Each dict maps column name → generated value (native type).
 
         Examples
         --------
@@ -691,48 +1011,58 @@ class DataForge:
         >>> len(rows)
         3
         """
-        if count == 0:
-            return []
+        return self.schema(fields).generate(count=count)
 
-        # Normalize fields
-        if isinstance(fields, list):
-            field_defs = [(f, f) for f in fields]
-        else:
-            field_defs = list(fields.items())
+    def to_json(
+        self,
+        fields: list[str] | dict[str, str],
+        count: int = 10,
+        path: str | None = None,
+        indent: int = 2,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
+    ) -> str:
+        """Generate fake data and return as a JSON array.
 
-        # Resolve providers and methods
-        columns: list[str] = []
-        callables: list[object] = []
-        for col_name, field_name in field_defs:
-            provider_attr, method_name = self._resolve_field(field_name)
-            provider = getattr(self, provider_attr)
-            method = getattr(provider, method_name)
-            columns.append(col_name)
-            callables.append(method)
+        Delegates to :meth:`Schema.to_json` for zero-duplication.
 
-        # Column-first: generate all values for each column in one batch call
-        col_data: list[list[str]] = []
-        for fn in callables:
-            if count == 1:
-                val = fn()  # type: ignore[operator]
-                col_data.append([val if isinstance(val, str) else str(val)])
-            else:
-                values = fn(count=count)  # type: ignore[operator]
-                # Most providers return list[str] — skip redundant str()
-                if values and isinstance(values[0], str):
-                    col_data.append(values)  # type: ignore[arg-type]
-                else:
-                    col_data.append([str(v) for v in values])
+        Parameters
+        ----------
+        fields : list[str] | dict[str, str]
+            Fields to generate (same format as :meth:`to_dict`).
+        count : int
+            Number of rows.
+        path : str | None
+            If provided, write JSON to this file path.
+        indent : int
+            JSON indentation level (default: 2).
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
-        # Zip columns into row dicts
-        col_tuple = tuple(columns)
-        return [dict(zip(col_tuple, row)) for row in zip(*col_data)]
+        Returns
+        -------
+        str
+            The JSON content as a string.
+        """
+        return self.schema(fields).to_json(
+            count=count,
+            path=path,
+            indent=indent,
+            encoding=encoding,
+            compress=compress,
+        )
 
     def to_csv(
         self,
         fields: list[str] | dict[str, str],
         count: int = 10,
         path: str | None = None,
+        delimiter: str = ",",
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> str:
         """Generate fake data and return (or write) as CSV.
 
@@ -747,19 +1077,34 @@ class DataForge:
         path : str | None
             If provided, write CSV to this file path. Otherwise return
             the CSV as a string.
+        delimiter : str
+            Field delimiter (default: comma).
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
         str
             The CSV content as a string.
         """
-        return self.schema(fields).to_csv(count=count, path=path)
+        return self.schema(fields).to_csv(
+            count=count,
+            path=path,
+            delimiter=delimiter,
+            encoding=encoding,
+            compress=compress,
+        )
 
     def to_jsonl(
         self,
         fields: list[str] | dict[str, str],
         count: int = 10,
         path: str | None = None,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> str:
         """Generate fake data and return (or write) as JSON Lines.
 
@@ -773,13 +1118,23 @@ class DataForge:
             Number of rows.
         path : str | None
             If provided, write JSONL to this file path.
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
         str
             The JSONL content as a string.
         """
-        return self.schema(fields).to_jsonl(count=count, path=path)
+        return self.schema(fields).to_jsonl(
+            count=count,
+            path=path,
+            encoding=encoding,
+            compress=compress,
+        )
 
     def to_sql(
         self,
@@ -788,6 +1143,8 @@ class DataForge:
         count: int = 10,
         dialect: str = "sqlite",
         path: str | None = None,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> str:
         """Generate fake data and return as SQL INSERT statements.
 
@@ -805,6 +1162,11 @@ class DataForge:
             SQL dialect: ``"sqlite"``, ``"mysql"``, or ``"postgresql"``.
         path : str | None
             If provided, write SQL to this file path.
+        encoding : str
+            Character encoding for file output (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output file.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -812,7 +1174,12 @@ class DataForge:
             SQL INSERT statements as a string.
         """
         return self.schema(fields).to_sql(
-            table=table, count=count, dialect=dialect, path=path
+            table=table,
+            count=count,
+            dialect=dialect,
+            path=path,
+            encoding=encoding,
+            compress=compress,
         )
 
     def to_dataframe(
@@ -845,6 +1212,9 @@ class DataForge:
         path: str,
         count: int = 10,
         batch_size: int | None = None,
+        delimiter: str = ",",
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> int:
         """Stream fake data directly to a CSV file.
 
@@ -861,6 +1231,13 @@ class DataForge:
             Number of rows.
         batch_size : int | None
             Rows per batch.  Auto-tuned when ``None``.
+        delimiter : str
+            Field delimiter (default: comma).
+        encoding : str
+            Character encoding (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -868,7 +1245,12 @@ class DataForge:
             Number of rows written.
         """
         return self.schema(fields).stream_to_csv(
-            path=path, count=count, batch_size=batch_size
+            path=path,
+            count=count,
+            batch_size=batch_size,
+            delimiter=delimiter,
+            encoding=encoding,
+            compress=compress,
         )
 
     def stream_to_jsonl(
@@ -877,6 +1259,8 @@ class DataForge:
         path: str,
         count: int = 10,
         batch_size: int | None = None,
+        encoding: str = "utf-8",
+        compress: bool | None = None,
     ) -> int:
         """Stream fake data directly to a JSON Lines file.
 
@@ -893,6 +1277,11 @@ class DataForge:
             Number of rows.
         batch_size : int | None
             Rows per batch.  Auto-tuned when ``None``.
+        encoding : str
+            Character encoding (default: utf-8).
+        compress : bool | None
+            If ``True``, gzip the output.  ``None`` auto-detects
+            from a ``.gz`` file extension.
 
         Returns
         -------
@@ -900,7 +1289,11 @@ class DataForge:
             Number of rows written.
         """
         return self.schema(fields).stream_to_jsonl(
-            path=path, count=count, batch_size=batch_size
+            path=path,
+            count=count,
+            batch_size=batch_size,
+            encoding=encoding,
+            compress=compress,
         )
 
     def to_arrow(
@@ -991,18 +1384,62 @@ class DataForge:
         return f"DataForge(locale={self._locale!r})"
 
     # ------------------------------------------------------------------
+    # Introspection API
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def list_providers() -> list[str]:
+        """Return a sorted list of all available provider names.
+
+        Returns
+        -------
+        list[str]
+            Provider names (e.g. ``["address", "company", "person", ...]``).
+        """
+        from dataforge.registry import get_provider_info
+
+        return sorted(get_provider_info())
+
+    @staticmethod
+    def list_fields() -> dict[str, tuple[str, str]]:
+        """Return all available field names with their provider/method info.
+
+        Returns
+        -------
+        dict[str, tuple[str, str]]
+            Mapping of ``{field_name: (provider_name, method_name)}``,
+            sorted by field name.
+
+        Examples
+        --------
+        >>> fields = DataForge.list_fields()
+        >>> fields["first_name"]
+        ('person', 'first_name')
+        """
+        from dataforge.registry import get_field_map
+
+        fm = get_field_map()
+        return dict(sorted(fm.items()))
+
+    # ------------------------------------------------------------------
     # Schema factories from ORM / model introspection
     # ------------------------------------------------------------------
 
     def schema_from_pydantic(self, model: type) -> "Any":
         """Create a :class:`Schema` by introspecting a Pydantic model.
 
-        Maps model field names to DataForge fields using the field
-        registry.  Fields that cannot be mapped are silently skipped
-        (a warning is emitted).  If the model has a field whose name
-        exactly matches a registered DataForge field (e.g.
-        ``first_name``, ``email``, ``city``), it is mapped
-        automatically.
+        Maps model field names to DataForge fields using a three-tier
+        strategy:
+
+        1. **Exact name match** — if the field name matches a registered
+           DataForge field (e.g. ``first_name``, ``email``), use it.
+        2. **Alias match** — common aliases like ``fname`` → ``first_name``.
+        3. **Type-based fallback** — if the field type annotation is
+           ``bool``, ``datetime.date``, ``uuid.UUID``, etc., map to a
+           sensible generator automatically.
+
+        Fields that cannot be mapped are silently skipped (a warning is
+        emitted).
 
         Requires ``pydantic`` to be installed.
 
@@ -1058,21 +1495,32 @@ class DataForge:
 
         import warnings
 
-        for field_name in model_fields:
+        for field_name, field_info in model_fields.items():
+            # Tier 1: exact name match in registry
             if field_name in field_map:
                 mapped[field_name] = field_name
-            else:
-                # Try common aliases / heuristic mapping
-                alias = _pydantic_heuristic(field_name)
-                if alias and alias in field_map:
-                    mapped[field_name] = alias
-                else:
-                    warnings.warn(
-                        f"Pydantic field '{field_name}' on {model.__name__} "
-                        f"could not be mapped to a DataForge field — skipping.",
-                        UserWarning,
-                        stacklevel=2,
-                    )
+                continue
+
+            # Tier 2: alias / heuristic name match
+            alias = _pydantic_heuristic(field_name)
+            if alias and alias in field_map:
+                mapped[field_name] = alias
+                continue
+
+            # Tier 3: type-based fallback
+            annotation = getattr(field_info, "annotation", None)
+            if annotation is not None:
+                type_field = _type_fallback(annotation)
+                if type_field and type_field in field_map:
+                    mapped[field_name] = type_field
+                    continue
+
+            warnings.warn(
+                f"Pydantic field '{field_name}' on {model.__name__} "
+                f"could not be mapped to a DataForge field — skipping.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         if not mapped:
             raise ValueError(
@@ -1086,10 +1534,19 @@ class DataForge:
     def schema_from_sqlalchemy(self, model: type) -> "Any":
         """Create a :class:`Schema` by introspecting a SQLAlchemy model.
 
-        Maps column names to DataForge fields using the field
-        registry.  Columns that cannot be mapped are silently skipped
-        (a warning is emitted).  Primary key columns named ``id``
-        are skipped automatically.
+        Maps column names to DataForge fields using a three-tier
+        strategy:
+
+        1. **Exact name match** — if the column name matches a registered
+           DataForge field, use it.
+        2. **Alias match** — common aliases like ``fname`` → ``first_name``.
+        3. **Column type fallback** — if the column type is ``Boolean``,
+           ``Date``, ``DateTime``, ``UUID``, ``Text``, etc., map to a
+           sensible generator automatically.
+
+        Primary key columns named ``id`` are skipped automatically.
+        Columns that cannot be mapped are silently skipped (a warning
+        is emitted).
 
         Requires ``sqlalchemy`` to be installed.
 
@@ -1144,20 +1601,31 @@ class DataForge:
             # Skip primary key 'id' columns — not fake-able
             if col_name == "id" and column.primary_key:
                 continue
+
+            # Tier 1: exact name match in registry
             if col_name in field_map:
                 mapped[col_name] = col_name
-            else:
-                alias = _sqlalchemy_heuristic(col_name, column)
-                if alias and alias in field_map:
-                    mapped[col_name] = alias
-                else:
-                    warnings.warn(
-                        f"SQLAlchemy column '{col_name}' on "
-                        f"{model.__name__} could not be mapped to a "
-                        f"DataForge field — skipping.",
-                        UserWarning,
-                        stacklevel=2,
-                    )
+                continue
+
+            # Tier 2: alias / heuristic name match
+            alias = _sqlalchemy_heuristic(col_name, column)
+            if alias and alias in field_map:
+                mapped[col_name] = alias
+                continue
+
+            # Tier 3: column type fallback
+            type_field = _sqlalchemy_type_fallback(column)
+            if type_field and type_field in field_map:
+                mapped[col_name] = type_field
+                continue
+
+            warnings.warn(
+                f"SQLAlchemy column '{col_name}' on "
+                f"{model.__name__} could not be mapped to a "
+                f"DataForge field — skipping.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         if not mapped:
             raise ValueError(

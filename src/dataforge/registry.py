@@ -76,6 +76,15 @@ def _ensure_loaded() -> None:
     import dataforge.providers.ai_prompt  # noqa: F401
     import dataforge.providers.llm  # noqa: F401
     import dataforge.providers.ai_chat  # noqa: F401
+    import dataforge.providers.social_media  # noqa: F401
+    import dataforge.providers.music  # noqa: F401
+    import dataforge.providers.sports  # noqa: F401
+    import dataforge.providers.food  # noqa: F401
+    import dataforge.providers.legal  # noqa: F401
+    import dataforge.providers.real_estate  # noqa: F401
+    import dataforge.providers.weather  # noqa: F401
+    import dataforge.providers.hardware  # noqa: F401
+    import dataforge.providers.logistics  # noqa: F401
 
     # ------------------------------------------------------------------
     # 2. Discover external plugins via entry points.
