@@ -33,15 +33,15 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: benchmark-baseline
-          path: .
+          path: baseline/
         continue-on-error: true
 
       - name: Run benchmarks
-        run: uv run python benchmark.py --save latest.json --compare benchmark_with_ai.json
+        run: uv run python benchmark.py --save latest.json --compare baseline/latest.json
 
       - name: Upload benchmark results as new baseline
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v8
         with:
           name: benchmark-baseline
           path: latest.json
@@ -50,7 +50,7 @@ jobs:
 
       - name: Upload benchmark results (per-commit archive)
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v8
         with:
           name: benchmark-results-${{ github.sha }}
           path: latest.json
