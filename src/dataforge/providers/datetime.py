@@ -274,6 +274,33 @@ class DateTimeProvider(BaseProvider):
         """
         s = start or _MIN_DATE
         e = end or _MAX_DATE
+        # Fast path: default ISO-like format — avoid strftime + datetime objects
+        if fmt == "%Y-%m-%d %H:%M:%S":
+            if s is _MIN_DATE and e is _MAX_DATE:
+                s_ord, e_ord = _MIN_ORDINAL, _MAX_ORDINAL
+            else:
+                s_ord, e_ord = s.toordinal(), e.toordinal()
+            _ri = self._engine.random_int
+            _from_ord = _dt.date.fromordinal
+            _secs = _SECONDS_IN_DAY - 1
+            if count == 1:
+                d = _from_ord(_ri(s_ord, e_ord))
+                total = _ri(0, _secs)
+                h, rem = divmod(total, 3600)
+                m, sec = divmod(rem, 60)
+                return (
+                    f"{d.year:04d}-{d.month:02d}-{d.day:02d} {h:02d}:{m:02d}:{sec:02d}"
+                )
+            result: list[str] = []
+            for _ in range(count):
+                d = _from_ord(_ri(s_ord, e_ord))
+                total = _ri(0, _secs)
+                h, rem = divmod(total, 3600)
+                m, sec = divmod(rem, 60)
+                result.append(
+                    f"{d.year:04d}-{d.month:02d}-{d.day:02d} {h:02d}:{m:02d}:{sec:02d}"
+                )
+            return result
         if count == 1:
             return self._one_datetime(s, e).strftime(fmt)
         return [self._one_datetime(s, e).strftime(fmt) for _ in range(count)]

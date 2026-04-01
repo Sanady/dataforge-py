@@ -39,18 +39,18 @@ forge.person.first_name(count=1_000_000) # 1M names in ~55ms
 
 ## Features
 
-- **High Performance** — scalar generation at millions of items/s, batch generation at ~18M items/s
-- **Vectorized Batches** — every method accepts `count=N` and returns a list, using optimized batch paths
+- **High Performance** — scalar generation at millions of items/s, batch generation at ~18M items/s, CSV export at ~92K rows/s
+- **Vectorized Batches** — every method accepts `count=N` and returns a list, using optimized batch paths with vectorized internals for internet, datetime, and finance providers
 - **Zero Dependencies** — core library has no external dependencies
 - **Type Safe** — fully typed with PEP 484 type hints and `@overload` signatures
 - **Reproducible** — global seeding for deterministic output
 - **Lazy Loading** — locales and providers are loaded only when first accessed
-- **Schema API** — define reusable data blueprints with pre-resolved field lookups
+- **Schema API** — define reusable data blueprints with pre-resolved field lookups and columnar-first generation
 - **Rich CLI** — generate CSV, JSON, or JSONL directly from the terminal
-- **Bulk Export** — export to dict, CSV, JSONL, SQL, DataFrame, Arrow, Polars, or Parquet
+- **Bulk Export** — export to dict, CSV, JSONL, SQL, DataFrame, Arrow, Polars, or Parquet with optimized columnar writers
 - **Streaming Export** — memory-efficient streaming writes for arbitrarily large datasets
 - **Pytest Plugin** — `forge`, `fake`, and `forge_unseeded` fixtures with seed markers
-- **Unique Values** — three-layer proxy with set-based dedup and over-sampling for batches
+- **Unique Values** — three-layer proxy with set-based dedup and adaptive over-sampling for batches
 - **27 Providers** — person, address, internet, company, phone, finance, datetime, color, file, network, lorem, barcode, misc, automotive, crypto, ecommerce, education, geo, government, medical, payment, profile, science, text, ai\_prompt, llm, ai\_chat
 - **17 Locales** — en\_US, en\_GB, en\_AU, en\_CA, de\_DE, fr\_FR, es\_ES, it\_IT, pt\_BR, nl\_NL, pl\_PL, ru\_RU, ar\_SA, hi\_IN, ja\_JP, ko\_KR, zh\_CN
 
@@ -773,7 +773,7 @@ The unique system uses a three-layer proxy architecture:
 2. `forge.unique.person` — `_UniqueProviderProxy` wrapping the provider
 3. `forge.unique.person.first_name` — `_UniqueMethodWrapper` with set-based dedup
 
-Batch generation uses **over-sampling** (requests 20% extra per round) to minimize retry passes. Raises `RuntimeError` if uniqueness cannot be satisfied after extensive retries.
+Batch generation uses **adaptive over-sampling** that starts at 20% extra per round and dynamically increases based on the observed collision rate, minimizing retry passes even at high saturation. Raises `RuntimeError` if uniqueness cannot be satisfied after extensive retries.
 
 ## Locales
 
@@ -854,6 +854,27 @@ uv run python benchmark.py
 uv run python benchmark.py --compare  # compare against saved baseline
 ```
 
+### Performance Architecture
+
+DataForge achieves its throughput through several layered optimizations:
+
+- **Columnar generation** — Schema generates data column-first, then
+  transposes to rows, enabling vectorized provider calls
+- **`csv.writer` over `csv.DictWriter`** — bulk export skips per-row
+  dict overhead, yielding ~36% faster CSV writes
+- **Cumulative weight caching** — weighted random choices cache
+  cumulative weight arrays at module level, avoiding recomputation
+- **Bulk null injection** — uses `binomialvariate()` + `random.sample()`
+  instead of per-element coin flips
+- **Vectorized batch paths** — internet, datetime, and finance providers
+  use dedicated batch code paths that avoid per-item method overhead
+- **`deque` for BFS traversal** — relational generation uses O(1)
+  `popleft()` instead of O(n) `list.pop(0)`
+- **Adaptive unique over-sampling** — starts at 20% extra and scales
+  with observed collision rate to minimize retry rounds
+- **In-place list mutation** — `numerify()`/`bothify()` build lists
+  once and mutate in place instead of appending
+
 ## CI/CD
 
 DataForge uses GitHub Actions for continuous integration and delivery:
@@ -888,7 +909,7 @@ Contributions are welcome. Please follow these guidelines:
 git clone https://github.com/yourusername/dataforge.git
 cd dataforge
 uv sync          # install all dependencies
-uv run pytest    # run tests (1061 tests)
+uv run pytest    # run tests (1671 tests)
 uv run ruff check src/ tests/        # lint
 uv run ruff format --check src/ tests/ # format check
 uv run python benchmark.py           # run benchmarks

@@ -59,7 +59,7 @@ class _UniqueMethodWrapper:
         )
 
     def _generate_batch(self, count: int, **kwargs: Any) -> list[Any]:
-        """Generate *count* unique values using over-sampling."""
+        """Generate *count* unique values using adaptive over-sampling."""
         seen = self._seen
         method = self._method
         result: list[Any] = []
@@ -67,6 +67,8 @@ class _UniqueMethodWrapper:
         max_total_retries = count * 100
 
         retries = 0
+        # Start with 20% over-sample; adapt based on collision rate
+        oversample_ratio = 0.20
         while remaining > 0:
             if retries > max_total_retries:
                 raise RuntimeError(
@@ -74,9 +76,10 @@ class _UniqueMethodWrapper:
                     f"{retries} retries for {self._method!r}. "
                     f"Generated {len(result)}/{count}."
                 )
-            # Over-sample by 20% to compensate for expected collisions
-            request = remaining + max(remaining // 5, 10)
+            # Adaptive: increase over-sampling as saturation grows
+            request = remaining + max(int(remaining * oversample_ratio), 10)
             batch = method(count=request, **kwargs)
+            batch_collisions = 0
             for val in batch:
                 if val not in seen:
                     seen.add(val)
@@ -86,6 +89,15 @@ class _UniqueMethodWrapper:
                         break
                 else:
                     retries += 1
+                    batch_collisions += 1
+
+            # Adapt over-sample ratio based on collision rate in this batch
+            if batch_collisions > 0 and len(batch) > 0:
+                collision_rate = batch_collisions / len(batch)
+                # Scale up: at 50% collision rate, request 2x; at 90%, ~10x
+                oversample_ratio = min(
+                    collision_rate / (1 - collision_rate + 0.01), 10.0
+                )
 
         return result
 

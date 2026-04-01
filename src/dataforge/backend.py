@@ -19,6 +19,11 @@ _LETTERS_UPPER: str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 _LETTERS_LOWER: str = "abcdefghijklmnopqrstuvwxyz"
 _LETTERS_ALL: str = _LETTERS_UPPER + _LETTERS_LOWER
 
+# Module-level cache for cumulative weights — keyed on id(weights).
+# Safe because weight tuples are stored as class attributes with stable
+# identity and cumulative weights are deterministic from input weights.
+_CUM_WEIGHTS_CACHE: dict[int, list[float]] = {}
+
 
 class RandomEngine:
     """Core randomness engine.
@@ -112,10 +117,15 @@ class RandomEngine:
         if hash_count == 0:
             return pattern
         # Slow path optimized: generate all digits in one call, then
-        # substitute via iterator — avoids N random_digit() calls.
+        # substitute in-place on a list — avoids iterator overhead.
         digits = self.random_digits_str(hash_count)
-        it = iter(digits)
-        return "".join(next(it) if ch == "#" else ch for ch in pattern)
+        chars = list(pattern)
+        d = 0
+        for i, ch in enumerate(chars):
+            if ch == "#":
+                chars[i] = digits[d]
+                d += 1
+        return "".join(chars)
 
     def letterify(self, pattern: str, upper: bool = False) -> str:
         """Replace every ``?`` in *pattern* with a random letter.
@@ -146,19 +156,18 @@ class RandomEngine:
         q_count = pattern.count("?")
         if hash_count == 0 and q_count == 0:
             return pattern
-        digits = iter(self.random_digits_str(hash_count)) if hash_count else iter(())
-        letters = (
-            iter(self._rng.choices(_LETTERS_ALL, k=q_count)) if q_count else iter(())
-        )
-        parts: list[str] = []
-        for ch in pattern:
+        digits = self.random_digits_str(hash_count) if hash_count else ""
+        letters = self._rng.choices(_LETTERS_ALL, k=q_count) if q_count else ()
+        chars = list(pattern)
+        d = q = 0
+        for i, ch in enumerate(chars):
             if ch == "#":
-                parts.append(next(digits))
+                chars[i] = digits[d]
+                d += 1
             elif ch == "?":
-                parts.append(next(letters))
-            else:
-                parts.append(ch)
-        return "".join(parts)
+                chars[i] = letters[q]
+                q += 1
+        return "".join(chars)
 
     def getrandbits(self, k: int) -> int:
         """Return a random integer with *k* random bits.
@@ -220,9 +229,16 @@ class RandomEngine:
         -------
         list
         """
-        # Accept both tuple and list directly — stdlib choices() handles
-        # both; avoid redundant list() conversion.
-        return self._rng.choices(data, weights=weights, k=count)
+        # Use module-level cumulative weights cache — avoids
+        # recomputing inside random.choices() on every call.
+        w_id = id(weights)
+        cum = _CUM_WEIGHTS_CACHE.get(w_id)
+        if cum is None:
+            from itertools import accumulate
+
+            cum = list(accumulate(weights))
+            _CUM_WEIGHTS_CACHE[w_id] = cum
+        return self._rng.choices(data, cum_weights=cum, k=count)
 
     def weighted_choice(
         self,
@@ -233,7 +249,15 @@ class RandomEngine:
 
         Scalar version of :meth:`weighted_choices`.
         """
-        return self._rng.choices(data, weights=weights, k=1)[0]
+        cache = _CUM_WEIGHTS_CACHE
+        w_id = id(weights)
+        cum = cache.get(w_id)
+        if cum is None:
+            from itertools import accumulate
+
+            cum = list(accumulate(weights))
+            cache[w_id] = cum
+        return self._rng.choices(data, cum_weights=cum, k=1)[0]
 
     # ------------------------------------------------------------------
     # Statistical distributions

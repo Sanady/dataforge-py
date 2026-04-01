@@ -39,6 +39,7 @@ Usage::
 
 from __future__ import annotations
 
+from collections import deque
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -101,10 +102,10 @@ class RelationalSchema:
                 in_degree[name] += 1
                 children_of[parent].append(name)
 
-        queue = [name for name, deg in in_degree.items() if deg == 0]
+        queue = deque(name for name, deg in in_degree.items() if deg == 0)
         order: list[str] = []
         while queue:
-            node = queue.pop(0)
+            node = queue.popleft()
             order.append(node)
             for child in children_of[node]:
                 in_degree[child] -= 1
@@ -133,6 +134,9 @@ class RelationalSchema:
         rng = forge._engine._rng
         result: dict[str, list[dict[str, Any]]] = {}
 
+        # Cache Schema objects to avoid re-building them on repeated calls
+        schemas: dict[str, Any] = {}
+
         for table_name in self._order:
             spec = self._table_specs[table_name]
             fields = spec.get("fields", [])
@@ -142,8 +146,10 @@ class RelationalSchema:
             parent_key = spec.get("parent_key")
             children_per_parent = spec.get("children_per_parent")
 
-            # Generate base data
-            schema = forge.schema(fields, null_fields=null_fields)
+            # Generate base data — cache Schema per table
+            if table_name not in schemas:
+                schemas[table_name] = forge.schema(fields, null_fields=null_fields)
+            schema = schemas[table_name]
             rows = schema.generate(count=count)
 
             # Add auto-increment id

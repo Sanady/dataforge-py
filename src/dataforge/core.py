@@ -241,6 +241,23 @@ def _sqlalchemy_heuristic(col_name: str, column: "Any") -> str | None:
     return None
 
 
+_SA_TYPE_MAP: dict[str, str | None] = {
+    "String": None,
+    "Text": "paragraph",
+    "Integer": None,
+    "BigInteger": None,
+    "SmallInteger": None,
+    "Float": None,
+    "Numeric": None,
+    "Boolean": "boolean",
+    "Date": "date",
+    "DateTime": "datetime",
+    "Time": "time",
+    "Uuid": "uuid4",
+    "UUID": "uuid4",
+}
+
+
 def _sqlalchemy_type_fallback(column: "Any") -> str | None:
     """Map a SQLAlchemy column type to a DataForge field name.
 
@@ -249,22 +266,6 @@ def _sqlalchemy_type_fallback(column: "Any") -> str | None:
     """
     col_type = type(column.type)
     type_name = col_type.__name__
-
-    _SA_TYPE_MAP: dict[str, str] = {
-        "String": None,  # type: ignore[dict-item]  # too ambiguous
-        "Text": "paragraph",
-        "Integer": None,  # type: ignore[dict-item]  # too ambiguous
-        "BigInteger": None,  # type: ignore[dict-item]
-        "SmallInteger": None,  # type: ignore[dict-item]
-        "Float": None,  # type: ignore[dict-item]
-        "Numeric": None,  # type: ignore[dict-item]
-        "Boolean": "boolean",
-        "Date": "date",
-        "DateTime": "datetime",
-        "Time": "time",
-        "Uuid": "uuid4",
-        "UUID": "uuid4",
-    }
     return _SA_TYPE_MAP.get(type_name)
 
 

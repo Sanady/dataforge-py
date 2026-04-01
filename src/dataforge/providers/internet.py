@@ -148,9 +148,7 @@ class InternetProvider(BaseProvider):
         first = self._engine.choice(self._ascii_first_names)
         last = self._engine.choice(self._ascii_last_names)
         fmt = self._engine.choice(self._user_formats)
-        return fmt.format_map(
-            {"first": first, "last": last, "num": self._engine.random_int(10, 99)}
-        )
+        return fmt.format(first=first, last=last, num=self._engine.random_int(10, 99))
 
     def _one_domain(self) -> str:
         word = self._engine.choice(self._ascii_last_names)
@@ -170,8 +168,8 @@ class InternetProvider(BaseProvider):
         fmts = _choices(self._user_formats, count)
         doms = _choices(domains, count)
         return [
-            f"{fmts[i].format_map({'first': firsts[i], 'last': lasts[i], 'num': _ri(10, 99)})}@{doms[i]}"
-            for i in range(count)
+            f"{fmt.format(first=f, last=ln, num=_ri(10, 99))}@{d}"
+            for fmt, f, ln, d in zip(fmts, firsts, lasts, doms)
         ]
 
     def _one_email(self) -> str:
@@ -214,7 +212,16 @@ class InternetProvider(BaseProvider):
         """
         if count == 1:
             return self._one_username()
-        return [self._one_username() for _ in range(count)]
+        # Vectorized batch: bulk random selections avoid per-item overhead
+        _choices = self._engine.choices
+        _ri = self._engine.random_int
+        firsts = _choices(self._ascii_first_names, count)
+        lasts = _choices(self._ascii_last_names, count)
+        fmts = _choices(self._user_formats, count)
+        return [
+            fmt.format(first=f, last=ln, num=_ri(10, 99))
+            for fmt, f, ln in zip(fmts, firsts, lasts)
+        ]
 
     @overload
     def email(self) -> str: ...
@@ -250,7 +257,11 @@ class InternetProvider(BaseProvider):
         """
         if count == 1:
             return self._one_domain()
-        return [self._one_domain() for _ in range(count)]
+        # Vectorized batch: bulk random selections
+        _choices = self._engine.choices
+        words = _choices(self._ascii_last_names, count)
+        suffixes = _choices(self._domain_suffixes, count)
+        return [f"{w}.{s}" for w, s in zip(words, suffixes)]
 
     @overload
     def url(self) -> str: ...
@@ -268,7 +279,12 @@ class InternetProvider(BaseProvider):
         """
         if count == 1:
             return self._one_url()
-        return [self._one_url() for _ in range(count)]
+        # Vectorized batch: bulk random selections
+        _choices = self._engine.choices
+        protocols = _choices(_URL_PROTOCOLS, count)
+        words = _choices(self._ascii_last_names, count)
+        suffixes = _choices(self._domain_suffixes, count)
+        return [f"{p}://{w}.{s}" for p, w, s in zip(protocols, words, suffixes)]
 
     @overload
     def ipv4(self) -> str: ...
@@ -309,7 +325,15 @@ class InternetProvider(BaseProvider):
         """
         if count == 1:
             return self._one_slug()
-        return [self._one_slug() for _ in range(count)]
+        # Vectorized: pick all words in one bulk call, then split
+        _ri = self._engine.random_int
+        _choices = self._engine.choices
+        result: list[str] = []
+        for _ in range(count):
+            n = _ri(2, 5)
+            words = _choices(_SLUG_WORDS, n)
+            result.append("-".join(words))
+        return result
 
     @overload
     def tld(self) -> str: ...
