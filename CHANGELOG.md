@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.3.0](https://github.com/Sanady/dataforge-py/compare/0.2.0...0.3.0) (2026-04-01)
+
+
+### Features
+
+* add 9 new data providers for social, music, sports, food, and more ([b45c609](https://github.com/Sanady/dataforge-py/commit/b45c609a9036f5afa65c7bb0d4bb198009390eb4))
+* add native types, type-aware orm mapping, and cli enhancements ([1ae172b](https://github.com/Sanady/dataforge-py/commit/1ae172bfad20be940a9bdbe80d8f02aa334ffb01))
+* add nullable fields, encoding options, and gzip compression ([81adc76](https://github.com/Sanady/dataforge-py/commit/81adc7667ec093fccaad523e0bf5d8d7996229d4))
+* add schema serialization, 5 new locales, and provider decorator ([ae658d2](https://github.com/Sanady/dataforge-py/commit/ae658d283ecef9f183205eb5135a16fe710762e8))
+* add unique-together constraints and relational data generation ([0054d43](https://github.com/Sanady/dataforge-py/commit/0054d436f2e436afcfc8aec71a9734fc6abe065b))
+* optimize core data generation and export paths ([4816970](https://github.com/Sanady/dataforge-py/commit/481697077117c58628a23aae44961cd0442a8c53))
+* optimize core data generation and export paths ([59e8284](https://github.com/Sanady/dataforge-py/commit/59e8284b3614ebab7b5e9fb827a9e8cd829d4b87))
+
+
+### Bug Fixes
+
+* correct three workflow bugs in CI, benchmarks, and publish ([eb35555](https://github.com/Sanady/dataforge-py/commit/eb35555bdbad30b240e499ff1205a9357dd11bdb))
+* correct workflow issues in ci, benchmarks, and publish ([10aa687](https://github.com/Sanady/dataforge-py/commit/10aa687dd8e4973c711670db9383bc7d2108ae11))
+* repair release-please pipeline configuration and publishing ([0175e0c](https://github.com/Sanady/dataforge-py/commit/0175e0ce94bdd160808006f5a88ef14c8fb6393b))
+* repair release-please pipeline configuration and publishing ([808783c](https://github.com/Sanady/dataforge-py/commit/808783c4246be8202d29bc9316ed9c4446d956a9))
+* revert actions/upload-artifact from v8 to v7 in benchmarks and publish workflows ([bbb40b9](https://github.com/Sanady/dataforge-py/commit/bbb40b97ffdcd7d4447334edceb42633050d0b43))
+* revert actions/upload-artifact to v7 in benchmarks and publish workflows ([2ea00f8](https://github.com/Sanady/dataforge-py/commit/2ea00f893020d5c77c7a8debd84a3d4b1689c2ae))
+* treat str and String as ambiguous in type-based ORM fallback ([6b482e0](https://github.com/Sanady/dataforge-py/commit/6b482e0704bc821ffefc780e7bc161e441179f1e))
+* use PR author instead of actor to skip Dependabot commitlint ([1c73579](https://github.com/Sanady/dataforge-py/commit/1c7357942a7b1d86dbd493d1d1489d4cd0e241fc))
+
 ## [0.2.0](https://github.com/Sanady/dataforge/compare/dataforge-v0.1.0...dataforge-v0.2.0) (2026-03-04)
 
 
