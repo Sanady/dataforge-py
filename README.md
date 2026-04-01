@@ -884,20 +884,18 @@ DataForge uses GitHub Actions for continuous integration and delivery:
 | **CI** | Push/PR to main | Commitlint + Ruff lint/format + pytest matrix (Python 3.12, 3.13) |
 | **Integrations** | Push/PR to main | Tests with optional deps (PyArrow, Polars, Pydantic, SQLAlchemy) |
 | **Benchmarks** | Push to main | Runs `benchmark.py --compare`, uploads results as artifact |
-| **Release** | Push to main | release-please creates/updates Release PR, auto-bumps version |
-| **Publish** | `v*.*.*` tag | Builds with `uv build`, publishes to PyPI via OIDC trusted publishing |
+| **Release** | Push to main | release-please creates/updates Release PR; on merge, publishes to PyPI |
 
 ### Release process
 
 1. All commits to `main` use [Conventional Commits](https://www.conventionalcommits.org/) format
 2. `release-please` automatically maintains a living Release PR that bundles changes
-3. Merging the Release PR creates a version tag (`v0.2.0`, etc.)
-4. The tag triggers the publish workflow, which pushes to PyPI with OIDC (no token needed)
+3. Merging the Release PR creates a bare numeric version tag (`0.3.0`, etc.) and a GitHub Release
+4. The publish job within the same workflow builds and pushes to PyPI via OIDC trusted publishing
 
 ### Setup requirements
 
-- **`RELEASE_TOKEN`** — GitHub PAT with `contents: write` permission (for release-please to push tags that trigger downstream workflows)
-- **`pypi` environment** — GitHub Environment with manual approval gate for PyPI publishing
+- **`pypi` environment** — GitHub Environment configured for PyPI OIDC trusted publishing
 
 ## Contributing
 
