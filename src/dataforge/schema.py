@@ -254,11 +254,14 @@ class Schema:
         # Apply null injection if any null_fields are configured
         null_fields = self._null_fields
         if null_fields:
-            _random = self._rng.random
+            _rng = self._rng
             for col_idx, prob in null_fields.items():
                 col = col_data[col_idx]
-                for i in range(count):
-                    if _random() < prob:
+                # Use bulk index selection via sample() instead of
+                # per-element random() — fewer Python-level calls.
+                n_nulls = _rng.binomialvariate(count, prob)
+                if n_nulls > 0:
+                    for i in _rng.sample(range(count), k=min(n_nulls, count)):
                         col[i] = None
 
         return col_data
@@ -285,9 +288,37 @@ class Schema:
         for col in col_data:
             if col and _isinstance(col[0], _str):
                 result.append(col)  # type: ignore[arg-type]
+            elif not col or col[0] is None:
+                # First element is None or column is empty — must stringify
+                # all elements to be safe.
+                result.append([_str(v) if v is not None else "" for v in col])
             else:
                 result.append([_str(v) if v is not None else "" for v in col])
         return result
+
+    def _generate_string_columns(self, count: int) -> list[list[str]]:
+        """Generate columns and stringify them, handling row lambdas.
+
+        Shared helper used by CSV, Parquet, Arrow, and Polars exports.
+        Avoids duplicating the generate→lambda→stringify pattern in
+        every export method.
+
+        Returns
+        -------
+        list[list[str]]
+            Stringified column data.
+        """
+        columns = self._columns
+        col_data = self._generate_columns(count)
+        _str = str
+        if self._row_lambdas:
+            batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
+            self._apply_row_lambdas(batch_rows)
+            return [
+                [_str(row[c]) if row[c] is not None else "" for row in batch_rows]
+                for c in columns
+            ]
+        return self._stringify_columns(col_data)
 
     def _apply_row_lambdas(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Apply row-dependent lambdas to generated rows in-place.
@@ -349,15 +380,26 @@ class Schema:
     def _enforce_unique_together(
         self, rows: list[dict[str, Any]], target: int
     ) -> list[dict[str, Any]]:
-        """Re-generate rows until all unique_together constraints are met."""
+        """Re-generate rows until all unique_together constraints are met.
+
+        Optimized: maintains a persistent ``seen`` set across rounds
+        so only replacement rows need to be re-checked, avoiding a
+        full table rescan every round.
+        """
         columns = self._columns
         _MAX_ROUNDS = 100
 
+        # Build persistent seen sets — one per constraint group.
+        # These survive across rounds so we only re-check new rows.
+        seen_per_group: list[set[tuple[Any, ...]]] = [
+            set() for _ in self._unique_together_indices
+        ]
+
         for _round in range(_MAX_ROUNDS):
-            # Check each constraint group
             all_ok = True
-            for idx_group in self._unique_together_indices:
-                seen: set[tuple[Any, ...]] = set()
+            for g_idx, idx_group in enumerate(self._unique_together_indices):
+                seen = seen_per_group[g_idx]
+                seen.clear()
                 dup_indices: list[int] = []
                 for i, row in enumerate(rows):
                     key = tuple(row[columns[j]] for j in idx_group)
@@ -533,19 +575,29 @@ class Schema:
         import csv
         import io
 
-        rows = self.generate(count)
-        if not rows:
+        if count == 0:
             return ""
 
+        columns = self._columns
+        col_data = self._generate_columns(count)
+
         buf = io.StringIO()
-        writer = csv.DictWriter(buf, fieldnames=self._columns, delimiter=delimiter)
-        writer.writeheader()
-        # Convert values to strings for CSV output
+        writer = csv.writer(buf, delimiter=delimiter)
+        writer.writerow(columns)
+
         _str = str
-        for row in rows:
-            writer.writerow(
-                {k: _str(v) if v is not None else "" for k, v in row.items()}
+        if self._row_lambdas:
+            # Row-lambda path: must materialize rows
+            rows = [dict(zip(columns, row)) for row in zip(*col_data)]
+            self._apply_row_lambdas(rows)
+            writer.writerows(
+                [_str(row[c]) if row[c] is not None else "" for c in columns]
+                for row in rows
             )
+        else:
+            str_data = self._stringify_columns(col_data)
+            writer.writerows(zip(*str_data))
+
         content = buf.getvalue()
 
         if path is not None:
@@ -600,8 +652,6 @@ class Schema:
             batch_size = min(count, max(1000, 100_000 // max(num_cols, 1)))
 
         written = 0
-        row_lambdas = self._row_lambdas
-        _str = str
         with _open_file(
             path, "w", encoding=encoding, compress=compress, newline=""
         ) as f:
@@ -611,19 +661,8 @@ class Schema:
             remaining = count
             while remaining > 0:
                 chunk = min(remaining, batch_size)
-                col_data = self._generate_columns(chunk)
-                str_data = self._stringify_columns(col_data)
-                if row_lambdas:
-                    batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
-                    self._apply_row_lambdas(batch_rows)
-                    writer.writerows(
-                        [_str(row[c]) if row[c] is not None else "" for c in columns]
-                        for row in batch_rows
-                    )
-                else:
-                    # Write all rows in one call — avoids per-row Python
-                    # function call overhead for csv.writer.writerow().
-                    writer.writerows(zip(*str_data))
+                str_data = self._generate_string_columns(chunk)
+                writer.writerows(zip(*str_data))
                 written += chunk
                 remaining -= chunk
 
@@ -660,11 +699,12 @@ class Schema:
         import json
 
         rows = self.generate(count)
-        lines = [json.dumps(row, ensure_ascii=False) for row in rows]
-
-        content = "\n".join(lines)
-        if content:
-            content += "\n"
+        _dumps = json.dumps
+        # Build final string with trailing newline in one pass —
+        # avoids an extra string copy from ``content += "\n"``.
+        if not rows:
+            return ""
+        content = "\n".join(_dumps(row, ensure_ascii=False) for row in rows) + "\n"
 
         if path is not None:
             with _open_file(path, "w", encoding=encoding, compress=compress) as f:
@@ -877,8 +917,21 @@ class Schema:
                 "Install it with: pip install pandas"
             ) from exc
 
-        rows = self.generate(count)
-        return pd.DataFrame(rows)
+        columns = self._columns
+        col_data = self._generate_columns(count)
+
+        if self._row_lambdas:
+            # Row-lambda path: must materialize rows for inter-column refs
+            rows = [dict(zip(columns, row)) for row in zip(*col_data)]
+            rows = self._apply_row_lambdas(rows)
+            if self._unique_together:
+                rows = self._enforce_unique_together(rows, count)
+            return pd.DataFrame(rows)
+
+        # Null injection already applied inside _generate_columns.
+        # Build DataFrame directly from columnar data — avoids double
+        # transposition (col→row dicts→DataFrame re-columnarizes).
+        return pd.DataFrame(dict(zip(columns, col_data)))
 
     def to_parquet(
         self,
@@ -925,28 +978,13 @@ class Schema:
 
         schema = pa.schema([(col, pa.string()) for col in columns])
         written = 0
-        row_lambdas = self._row_lambdas
-        _str = str
 
         with pq.ParquetWriter(path, schema) as writer:
             remaining = count
             while remaining > 0:
                 chunk = min(remaining, batch_size)
-                col_data = self._generate_columns(chunk)
-                if row_lambdas:
-                    # Must apply lambdas row-wise, then re-extract columns
-                    batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
-                    self._apply_row_lambdas(batch_rows)
-                    col_data = [
-                        [
-                            _str(row[c]) if row[c] is not None else ""
-                            for row in batch_rows
-                        ]
-                        for c in columns
-                    ]
-                else:
-                    col_data = self._stringify_columns(col_data)
-                arrays = [pa.array(col, type=pa.string()) for col in col_data]
+                str_data = self._generate_string_columns(chunk)
+                arrays = [pa.array(col, type=pa.string()) for col in str_data]
                 batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
                 writer.write_batch(batch)
                 written += chunk
@@ -1088,22 +1126,11 @@ class Schema:
             batch_size = min(count, max(1000, 100_000 // max(num_cols, 1)))
 
         schema = pa.schema([(col, pa.string()) for col in columns])
-        row_lambdas = self._row_lambdas
-        _str = str
 
         if count <= batch_size:
             # Single-shot: no concat overhead
-            col_data = self._generate_columns(count)
-            if row_lambdas:
-                batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
-                self._apply_row_lambdas(batch_rows)
-                col_data = [
-                    [_str(row[c]) if row[c] is not None else "" for row in batch_rows]
-                    for c in columns
-                ]
-            else:
-                col_data = self._stringify_columns(col_data)
-            arrays = [pa.array(col, type=pa.string()) for col in col_data]
+            str_data = self._generate_string_columns(count)
+            arrays = [pa.array(col, type=pa.string()) for col in str_data]
             return pa.table(dict(zip(columns, arrays)), schema=schema)
 
         # Multi-batch: generate batches → concat
@@ -1111,17 +1138,8 @@ class Schema:
         remaining = count
         while remaining > 0:
             chunk = min(remaining, batch_size)
-            col_data = self._generate_columns(chunk)
-            if row_lambdas:
-                batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
-                self._apply_row_lambdas(batch_rows)
-                col_data = [
-                    [_str(row[c]) if row[c] is not None else "" for row in batch_rows]
-                    for c in columns
-                ]
-            else:
-                col_data = self._stringify_columns(col_data)
-            arrays = [pa.array(col, type=pa.string()) for col in col_data]
+            str_data = self._generate_string_columns(chunk)
+            arrays = [pa.array(col, type=pa.string()) for col in str_data]
             batches.append(pa.record_batch(arrays, schema=schema))
             remaining -= chunk
 
@@ -1169,22 +1187,10 @@ class Schema:
         if batch_size is None:
             batch_size = min(count, max(1000, 100_000 // max(num_cols, 1)))
 
-        row_lambdas = self._row_lambdas
-        _str = str
-
         if count <= batch_size:
-            col_data = self._generate_columns(count)
-            if row_lambdas:
-                batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
-                self._apply_row_lambdas(batch_rows)
-                col_data = [
-                    [_str(row[c]) if row[c] is not None else "" for row in batch_rows]
-                    for c in columns
-                ]
-            else:
-                col_data = self._stringify_columns(col_data)
+            str_data = self._generate_string_columns(count)
             return pl.DataFrame(
-                {col: data for col, data in zip(columns, col_data)},
+                {col: data for col, data in zip(columns, str_data)},
                 schema={col: pl.Utf8 for col in columns},
             )
 
@@ -1193,19 +1199,10 @@ class Schema:
         remaining = count
         while remaining > 0:
             chunk = min(remaining, batch_size)
-            col_data = self._generate_columns(chunk)
-            if row_lambdas:
-                batch_rows = [dict(zip(columns, row)) for row in zip(*col_data)]
-                self._apply_row_lambdas(batch_rows)
-                col_data = [
-                    [_str(row[c]) if row[c] is not None else "" for row in batch_rows]
-                    for c in columns
-                ]
-            else:
-                col_data = self._stringify_columns(col_data)
+            str_data = self._generate_string_columns(chunk)
             frames.append(
                 pl.DataFrame(
-                    {col: data for col, data in zip(columns, col_data)},
+                    {col: data for col, data in zip(columns, str_data)},
                     schema={col: pl.Utf8 for col in columns},
                 )
             )

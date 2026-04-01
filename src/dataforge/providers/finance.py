@@ -269,14 +269,9 @@ class FinanceProvider(BaseProvider):
     def _one_bitcoin_address(self) -> str:
         # P2PKH addresses: "1" + 25-33 Base58 characters
         length = self._engine.random_int(25, 33)
-        # 7k — Use divmod(bits, 58) for unbiased Base58 encoding.
-        # Previous approach used ``bits % 58`` + ``bits >>= 6`` which
-        # was biased because 2^6 = 64 is not divisible by 58.
-        bits = self._engine.getrandbits(length * 6)
-        chars: list[str] = []
-        for _ in range(length):
-            bits, idx = divmod(bits, _BASE58_LEN)
-            chars.append(_BASE58_STR[idx])
+        # Use choices() on the Base58 alphabet — avoids Python-level
+        # divmod loop entirely.  The RNG picks k indices in C.
+        chars = self._engine._rng.choices(_BASE58_STR, k=length)
         return "1" + "".join(chars)
 
     # ------------------------------------------------------------------
