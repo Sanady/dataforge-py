@@ -25,6 +25,29 @@ Usage::
     schema = forge.schema(["first_name", "email"])
     schema.save_schema("my_schema.yaml")
     loaded = forge.schema_from_file("my_schema.yaml")
+
+    # Time-series generation
+    ts = forge.timeseries(start="2024-01-01", end="2024-12-31", interval="1h")
+    rows = ts.generate()
+
+    # Schema inference
+    s = forge.infer_schema([{"name": "Alice", "email": "alice@ex.com"}])
+
+    # Chaos mode (data quality testing)
+    from dataforge.chaos import ChaosTransformer
+    s = forge.schema(["first_name", "email"], chaos=ChaosTransformer(null_rate=0.1))
+
+    # Data anonymization
+    from dataforge.anonymizer import Anonymizer
+
+    # Database seeding
+    from dataforge.seeder import DatabaseSeeder
+
+    # OpenAPI schema import
+    from dataforge.openapi import OpenAPIParser
+
+    # Streaming to HTTP / Kafka / RabbitMQ
+    from dataforge.streaming import HttpEmitter, KafkaEmitter
 """
 
 from dataforge.core import DataForge

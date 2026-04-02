@@ -419,3 +419,205 @@ class RandomEngine:
             val = int(_math.ceil(self._rng.paretovariate(alpha - 1)))
             if val <= n:
                 return val
+
+    # ------------------------------------------------------------------
+    # Regex-based string generation
+    # ------------------------------------------------------------------
+
+    def regexify(self, pattern: str) -> str:
+        """Generate a random string matching a simplified regex *pattern*.
+
+        Supports a practical subset of regex syntax:
+        - ``[a-z]``, ``[A-Z]``, ``[0-9]``, ``[abc]`` — character classes
+        - ``{n}``, ``{n,m}`` — exact and range repetition
+        - ``+`` — 1-3 repetitions
+        - ``*`` — 0-3 repetitions
+        - ``?`` — 0 or 1
+        - ``(a|b|c)`` — alternation groups
+        - ``.`` — any printable ASCII character
+        - ``\\d``, ``\\w``, ``\\s`` — digit, word char, whitespace
+        - Literal characters
+
+        Parameters
+        ----------
+        pattern : str
+            Simplified regex pattern.
+
+        Returns
+        -------
+        str
+        """
+        _rng = self._rng
+        result: list[str] = []
+        i = 0
+        n = len(pattern)
+
+        while i < n:
+            ch = pattern[i]
+
+            if ch == "\\" and i + 1 < n:
+                # Escape sequences
+                esc = pattern[i + 1]
+                if esc == "d":
+                    chars = "0123456789"
+                elif esc == "w":
+                    chars = _LETTERS_ALL + "0123456789_"
+                elif esc == "s":
+                    chars = " \t"
+                else:
+                    # Literal escaped char
+                    result.append(esc)
+                    i += 2
+                    i, _ = self._regexify_quantifier(pattern, i, _rng, result, esc)
+                    continue
+                base = _rng.choice(chars)
+                i += 2
+                i, _ = self._regexify_quantifier(pattern, i, _rng, result, base, chars)
+                continue
+
+            if ch == "[":
+                # Character class
+                close = pattern.find("]", i + 1)
+                if close == -1:
+                    result.append(ch)
+                    i += 1
+                    continue
+                chars = self._parse_char_class(pattern[i + 1 : close])
+                base = _rng.choice(chars) if chars else "?"
+                i = close + 1
+                i, _ = self._regexify_quantifier(pattern, i, _rng, result, base, chars)
+                continue
+
+            if ch == "(":
+                # Alternation group
+                close = pattern.find(")", i + 1)
+                if close == -1:
+                    result.append(ch)
+                    i += 1
+                    continue
+                options = pattern[i + 1 : close].split("|")
+                chosen = _rng.choice(options)
+                i = close + 1
+                # Check for quantifier on group
+                if i < n and pattern[i] in "{+*?":
+                    if pattern[i] == "{":
+                        end_brace = pattern.find("}", i + 1)
+                        if end_brace != -1:
+                            rep_spec = pattern[i + 1 : end_brace]
+                            i = end_brace + 1
+                            if "," in rep_spec:
+                                parts = rep_spec.split(",", 1)
+                                lo = int(parts[0]) if parts[0] else 0
+                                hi = int(parts[1]) if parts[1] else lo
+                                reps = _rng.randint(lo, hi)
+                            else:
+                                reps = int(rep_spec)
+                            for _ in range(reps):
+                                result.append(_rng.choice(options))
+                            continue
+                    elif pattern[i] == "+":
+                        reps = _rng.randint(1, 3)
+                        i += 1
+                        for _ in range(reps):
+                            result.append(_rng.choice(options))
+                        continue
+                    elif pattern[i] == "*":
+                        reps = _rng.randint(0, 3)
+                        i += 1
+                        for _ in range(reps):
+                            result.append(_rng.choice(options))
+                        continue
+                    elif pattern[i] == "?":
+                        if _rng.random() > 0.5:
+                            result.append(chosen)
+                        i += 1
+                        continue
+                result.append(chosen)
+                continue
+
+            if ch == ".":
+                # Any printable ASCII
+                base = chr(_rng.randint(33, 126))
+                i += 1
+                i, _ = self._regexify_quantifier(pattern, i, _rng, result, base)
+                continue
+
+            # Literal character
+            i += 1
+            i, _ = self._regexify_quantifier(pattern, i, _rng, result, ch)
+
+        return "".join(result)
+
+    @staticmethod
+    def _parse_char_class(spec: str) -> str:
+        """Parse a character class interior like ``a-zA-Z0-9``."""
+        chars: list[str] = []
+        i = 0
+        n = len(spec)
+        while i < n:
+            if i + 2 < n and spec[i + 1] == "-":
+                lo = ord(spec[i])
+                hi = ord(spec[i + 2])
+                chars.extend(chr(c) for c in range(lo, hi + 1))
+                i += 3
+            else:
+                chars.append(spec[i])
+                i += 1
+        return "".join(chars) if chars else "?"
+
+    @staticmethod
+    def _regexify_quantifier(
+        pattern: str,
+        i: int,
+        rng: _random.Random,
+        result: list[str],
+        base: str,
+        char_pool: str | None = None,
+    ) -> tuple[int, bool]:
+        """Handle quantifiers {n}, {n,m}, +, *, ? after a token."""
+        n = len(pattern)
+        if i >= n:
+            result.append(base)
+            return i, False
+
+        ch = pattern[i]
+        if ch == "{":
+            end = pattern.find("}", i + 1)
+            if end == -1:
+                result.append(base)
+                return i, False
+            rep_spec = pattern[i + 1 : end]
+            i = end + 1
+            if "," in rep_spec:
+                parts = rep_spec.split(",", 1)
+                lo = int(parts[0]) if parts[0] else 0
+                hi = int(parts[1]) if parts[1] else lo
+                reps = rng.randint(lo, hi)
+            else:
+                reps = int(rep_spec)
+            if char_pool:
+                result.extend(rng.choice(char_pool) for _ in range(reps))
+            else:
+                result.extend(base for _ in range(reps))
+            return i, True
+        elif ch == "+":
+            reps = rng.randint(1, 3)
+            if char_pool:
+                result.extend(rng.choice(char_pool) for _ in range(reps))
+            else:
+                result.extend(base for _ in range(reps))
+            return i + 1, True
+        elif ch == "*":
+            reps = rng.randint(0, 3)
+            if char_pool:
+                result.extend(rng.choice(char_pool) for _ in range(reps))
+            else:
+                result.extend(base for _ in range(reps))
+            return i + 1, True
+        elif ch == "?":
+            if rng.random() > 0.5:
+                result.append(base)
+            return i + 1, True
+        else:
+            result.append(base)
+            return i, False

@@ -175,6 +175,30 @@ def _build_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"dataforge {__version__}",
     )
+    parser.add_argument(
+        "--tui",
+        action="store_true",
+        help="Launch the interactive TUI schema builder. Requires textual.",
+    )
+    parser.add_argument(
+        "--infer",
+        default=None,
+        metavar="CSV_FILE",
+        help="Infer a schema from a CSV file and generate data matching it.",
+    )
+    parser.add_argument(
+        "--anonymize",
+        default=None,
+        metavar="CSV_FILE",
+        help="Anonymize a CSV file by replacing PII with fake data.",
+    )
+    parser.add_argument(
+        "--chaos",
+        default=None,
+        metavar="RATE",
+        type=float,
+        help="Apply chaos/data-quality transformations at the given rate (0.0-1.0).",
+    )
     return parser
 
 
@@ -193,6 +217,44 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     field_map = get_field_map()
+
+    # --tui: launch interactive TUI
+    if args.tui:
+        try:
+            from dataforge.tui import launch
+
+            launch()
+        except ModuleNotFoundError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        return 0
+
+    # --infer: infer schema from CSV and generate data
+    if args.infer:
+        forge = DataForge(locale=args.locale, seed=args.seed)
+        try:
+            schema = forge.infer_schema_from_csv(args.infer)
+        except Exception as exc:
+            print(f"Error inferring schema: {exc}", file=sys.stderr)
+            return 1
+        rows = schema.generate(count=args.count)
+        print(json.dumps(rows, indent=2, ensure_ascii=False, default=str))
+        return 0
+
+    # --anonymize: anonymize a CSV file
+    if args.anonymize:
+        forge = DataForge(locale=args.locale, seed=args.seed)
+        from dataforge.anonymizer import Anonymizer
+
+        anonymizer = Anonymizer(forge)
+        output = args.output or args.anonymize.replace(".csv", "_anonymized.csv")
+        try:
+            anonymizer.anonymize_csv(args.anonymize, output)
+        except Exception as exc:
+            print(f"Error anonymizing: {exc}", file=sys.stderr)
+            return 1
+        print(f"Anonymized output written to {output}", file=sys.stderr)
+        return 0
 
     # --list-providers
     if args.list_providers:
@@ -352,11 +414,18 @@ def main(argv: list[str] | None = None) -> int:
     encoding = args.encoding
     compress: bool | None = True if args.compress else None
 
+    # Build chaos transformer if --chaos is set
+    chaos_arg = None
+    if args.chaos is not None:
+        from dataforge.chaos import ChaosTransformer
+
+        chaos_arg = ChaosTransformer(null_rate=args.chaos)
+
     # --stream mode: write directly to file
     if args.stream:
         fmt = args.format
         path = args.output
-        schema = forge.schema(fields_arg, null_fields=null_fields)
+        schema = forge.schema(fields_arg, null_fields=null_fields, chaos=chaos_arg)
         if fmt in ("csv", "tsv"):
             written = schema.stream_to_csv(
                 path=path,
@@ -377,7 +446,9 @@ def main(argv: list[str] | None = None) -> int:
         elif fmt == "json":
             # JSON array can't easily stream, but we can generate
             # and write — still respects --output
-            schema_j = forge.schema(fields_arg, null_fields=null_fields)
+            schema_j = forge.schema(
+                fields_arg, null_fields=null_fields, chaos=chaos_arg
+            )
             schema_j.to_json(
                 count=args.count,
                 path=path,
@@ -401,7 +472,7 @@ def main(argv: list[str] | None = None) -> int:
     # Non-streaming mode: generate all data in memory
     if args.unique:
         # Generate with unique proxy — row at a time
-        schema = forge.schema(fields_arg, null_fields=null_fields)
+        schema = forge.schema(fields_arg, null_fields=null_fields, chaos=chaos_arg)
         rows: list[dict[str, object]] = []
         seen: dict[str, set[object]] = {h: set() for h in headers}
         attempts = 0
@@ -425,7 +496,7 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
     else:
-        schema_gen = forge.schema(fields_arg, null_fields=null_fields)
+        schema_gen = forge.schema(fields_arg, null_fields=null_fields, chaos=chaos_arg)
         rows = schema_gen.generate(count=args.count)
 
     # Determine output destination

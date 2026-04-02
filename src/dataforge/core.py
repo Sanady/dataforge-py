@@ -733,15 +733,18 @@ class DataForge:
         fields: "list[str] | dict[str, Any]",
         null_fields: "dict[str, float] | None" = None,
         unique_together: "list[tuple[str, ...]] | None" = None,
+        chaos: "Any | None" = None,
     ) -> "Any":
         """Create a pre-resolved :class:`Schema` for maximum throughput.
 
         Parameters
         ----------
-        fields : list[str] | dict[str, str | Callable]
+        fields : list[str] | dict[str, str | Callable | dict]
             Fields to generate.  String values are resolved to provider
             methods.  Callable values receive the current row dict and
-            can reference previously generated columns.
+            can reference previously generated columns.  Dict values
+            define constraints (``depends_on``, ``temporal``, ``correlate``,
+            ``conditional``, ``range``).
         null_fields : dict[str, float] | None
             Optional mapping of column names to null probabilities
             (0.0–1.0).  Example: ``{"email": 0.3}`` makes ~30% of
@@ -750,6 +753,10 @@ class DataForge:
             Optional list of column-name tuples whose combinations
             must be unique.  Example: ``[("first_name", "last_name")]``
             ensures no two rows share the same name pair.
+        chaos : ChaosTransformer | dict | None
+            Optional chaos/data-quality transformer.  Pass a
+            :class:`~dataforge.chaos.ChaosTransformer` instance or a
+            config dict (e.g. ``{"null_rate": 0.1, "type_mismatch_rate": 0.05}``).
 
         Returns
         -------
@@ -773,6 +780,21 @@ class DataForge:
         >>> s = forge.schema(["first_name", "last_name", "email"],
         ...                  unique_together=[("first_name", "last_name")])
         >>> rows = s.generate(count=50)
+
+        Constrained/correlated fields:
+
+        >>> s = forge.schema({
+        ...     "country": "country",
+        ...     "state": {"field": "address.state", "depends_on": "country"},
+        ... })
+        >>> rows = s.generate(count=100)
+
+        Chaos mode:
+
+        >>> from dataforge.chaos import ChaosTransformer
+        >>> s = forge.schema(["first_name", "email"],
+        ...                  chaos=ChaosTransformer(null_rate=0.1))
+        >>> rows = s.generate(count=100)
         """
         from dataforge.schema import Schema
 
@@ -781,6 +803,7 @@ class DataForge:
             fields,
             null_fields=null_fields,
             unique_together=unique_together,
+            chaos=chaos,
         )
 
     def relational(
@@ -1421,6 +1444,102 @@ class DataForge:
 
         fm = get_field_map()
         return dict(sorted(fm.items()))
+
+    # ------------------------------------------------------------------
+    # Time-series generation
+    # ------------------------------------------------------------------
+
+    def timeseries(self, **kwargs: Any) -> "Any":
+        """Create a :class:`~dataforge.timeseries.TimeSeriesSchema`.
+
+        Parameters
+        ----------
+        **kwargs
+            All keyword arguments are forwarded to
+            :class:`~dataforge.timeseries.TimeSeriesSchema`.
+            Common options: ``start``, ``end``, ``interval``,
+            ``trend``, ``seasonality_amplitude``, ``noise_std``,
+            ``anomaly_rate``, ``spike_amplitude``.
+
+        Returns
+        -------
+        TimeSeriesSchema
+
+        Examples
+        --------
+        >>> forge = DataForge(seed=42)
+        >>> ts = forge.timeseries(
+        ...     start="2024-01-01", end="2024-01-31",
+        ...     interval="1h", trend=0.01, noise_std=0.5,
+        ... )
+        >>> rows = ts.generate()
+        """
+        from dataforge.timeseries import TimeSeriesSchema
+
+        return TimeSeriesSchema(self, **kwargs)
+
+    # ------------------------------------------------------------------
+    # Schema inference
+    # ------------------------------------------------------------------
+
+    def infer_schema(
+        self,
+        data: "list[dict[str, Any]]",
+    ) -> "Any":
+        """Infer a :class:`Schema` from sample data (list of dicts).
+
+        Analyzes the data to detect types, semantic patterns, and
+        distributions, then builds a matching Schema.
+
+        Parameters
+        ----------
+        data : list[dict]
+            Sample rows to analyze.
+
+        Returns
+        -------
+        Schema
+
+        Examples
+        --------
+        >>> forge = DataForge(seed=42)
+        >>> sample = [{"name": "Alice", "email": "alice@example.com"}]
+        >>> s = forge.infer_schema(sample)
+        >>> rows = s.generate(count=100)
+        """
+        from dataforge.inference import SchemaInferrer
+
+        inferrer = SchemaInferrer(self)
+        return inferrer.from_records(data)
+
+    def infer_schema_from_csv(
+        self,
+        path: str,
+        max_rows: int = 1000,
+    ) -> "Any":
+        """Infer a :class:`Schema` from a CSV file.
+
+        Parameters
+        ----------
+        path : str
+            Path to the CSV file to analyze.
+        max_rows : int
+            Maximum rows to sample for inference.
+
+        Returns
+        -------
+        Schema
+
+        Examples
+        --------
+        >>> forge = DataForge(seed=42)
+        >>> s = forge.infer_schema_from_csv("users.csv")
+        >>> rows = s.generate(count=1000)
+        """
+        from dataforge.inference import SchemaInferrer
+
+        inferrer = SchemaInferrer(self)
+        return inferrer.from_csv(path, max_rows=max_rows)
 
     # ------------------------------------------------------------------
     # Schema factories from ORM / model introspection

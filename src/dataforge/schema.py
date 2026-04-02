@@ -130,6 +130,11 @@ class Schema:
         "_unique_together",
         "_unique_together_indices",
         "_fields_spec",
+        "_chaos",
+        "_constraints",
+        "_independent_cols",
+        "_dependent_order",
+        "_forge_ref",
     )
 
     def __init__(
@@ -138,37 +143,101 @@ class Schema:
         fields: "list[str] | dict[str, Any]",
         null_fields: "dict[str, float] | None" = None,
         unique_together: "list[tuple[str, ...]] | None" = None,
+        chaos: "Any | None" = None,
     ) -> None:
-        # Normalize to (column_name, field_spec) pairs
-        if isinstance(fields, list):
-            field_defs: list[tuple[str, str | Callable[..., Any]]] = [
-                (f, f) for f in fields
-            ]
-        else:
-            field_defs = list(fields.items())
+        # Check for dict-based field specs (constraint engine)
+        has_dict_specs = False
+        if isinstance(fields, dict):
+            for v in fields.values():
+                if isinstance(v, dict):
+                    has_dict_specs = True
+                    break
 
-        columns: list[str] = []
-        callables: list[object] = []
-        row_lambdas: dict[int, Callable[..., Any]] = {}
+        # Only store forge ref and chaos when actually needed — avoids
+        # extra attribute assignments in the common (standard) path.
+        self._forge_ref = forge if (has_dict_specs or chaos is not None) else None  # type: ignore[assignment]
+        self._chaos = chaos
 
-        for idx, (col_name, field_spec) in enumerate(field_defs):
-            columns.append(col_name)
-            if callable(field_spec):
-                # Row-dependent lambda — stored separately, executed
-                # per-row after batch columns are generated.
-                callables.append(_ROW_LAMBDA)
-                row_lambdas[idx] = field_spec
-            else:
-                # String field name — resolve to provider method
-                provider_attr, method_name = forge._resolve_field(field_spec)
+        if has_dict_specs:
+            # Use constraint engine for two-pass generation
+            from dataforge.constraints import build_dependency_order
+
+            independent, dependent_order, constraint_map = build_dependency_order(
+                fields  # type: ignore[arg-type]
+            )
+
+            # Build columns and callables for independent columns only
+            columns: list[str] = []
+            callables: list[object] = []
+            row_lambdas: dict[int, Callable[..., Any]] = {}
+
+            for col_name in independent:
+                spec = fields[col_name]  # type: ignore[index]
+                if isinstance(spec, dict):
+                    field_name = spec.get("field", col_name)
+                elif callable(spec):
+                    idx = len(columns)
+                    columns.append(col_name)
+                    callables.append(_ROW_LAMBDA)
+                    row_lambdas[idx] = spec
+                    continue
+                else:
+                    field_name = spec
+                provider_attr, method_name = forge._resolve_field(field_name)
                 provider = getattr(forge, provider_attr)
                 method = getattr(provider, method_name)
+                columns.append(col_name)
                 callables.append(method)
 
-        # Store as tuples for fastest iteration (bytecode LOAD_FAST)
-        self._columns: tuple[str, ...] = tuple(columns)
-        self._callables: tuple[object, ...] = tuple(callables)
-        self._row_lambdas: dict[int, Callable[..., Any]] = row_lambdas
+            # Add placeholders for dependent columns (filled per-row)
+            for col_name, _constraint in dependent_order:
+                columns.append(col_name)
+                callables.append(_ROW_LAMBDA)
+                # Don't add to row_lambdas — handled by constraint engine
+
+            self._columns = tuple(columns)
+            self._callables = tuple(callables)
+            self._row_lambdas = row_lambdas
+            self._independent_cols: tuple[str, ...] = tuple(independent)
+            self._dependent_order = dependent_order
+            self._constraints = constraint_map
+        else:
+            # Standard path — no constraints
+            # Normalize to (column_name, field_spec) pairs
+            if isinstance(fields, list):
+                field_defs: list[tuple[str, str | Callable[..., Any]]] = [
+                    (f, f) for f in fields
+                ]
+            else:
+                field_defs = list(fields.items())
+
+            columns = []
+            callables = []
+            row_lambdas = {}
+
+            for idx, (col_name, field_spec) in enumerate(field_defs):
+                columns.append(col_name)
+                if callable(field_spec):
+                    # Row-dependent lambda — stored separately, executed
+                    # per-row after batch columns are generated.
+                    callables.append(_ROW_LAMBDA)
+                    row_lambdas[idx] = field_spec
+                else:
+                    # String field name — resolve to provider method
+                    provider_attr, method_name = forge._resolve_field(field_spec)
+                    provider = getattr(forge, provider_attr)
+                    method = getattr(provider, method_name)
+                    callables.append(method)
+
+            # Store as tuples for fastest iteration (bytecode LOAD_FAST)
+            self._columns = tuple(columns)
+            self._callables = tuple(callables)
+            self._row_lambdas = row_lambdas
+            # Standard path: use None sentinels — avoids creating
+            # empty containers and saves 3 allocations per Schema.
+            self._independent_cols = None  # type: ignore[assignment]
+            self._dependent_order = None  # type: ignore[assignment]
+            self._constraints = None  # type: ignore[assignment]
 
         # Remember the original field spec for schema serialization
         self._fields_spec: list[str] | dict[str, Any] = fields
@@ -371,11 +440,39 @@ class Schema:
         rows = [dict(zip(columns, row)) for row in zip(*col_data)]
         rows = self._apply_row_lambdas(rows)
 
+        # Apply constraint-based dependent columns (two-pass)
+        dep_order = self._dependent_order
+        if dep_order:
+            engine = self._forge_ref._engine
+            forge = self._forge_ref
+            for row in rows:
+                for col_name, constraint in dep_order:
+                    row[col_name] = constraint.generate(row, engine, forge)
+
         # Enforce unique_together constraints
         if self._unique_together:
             rows = self._enforce_unique_together(rows, count)
 
+        # Apply chaos transformer if configured
+        chaos = self._chaos
+        if chaos is not None:
+            rows = self._apply_chaos(rows)
+
         return rows
+
+    def _apply_chaos(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Apply chaos/data-quality transformations to generated rows."""
+        chaos = self._chaos
+        if chaos is None:
+            return rows
+        # Accept ChaosTransformer instance or config dict
+        if isinstance(chaos, dict):
+            from dataforge.chaos import ChaosTransformer
+
+            transformer = ChaosTransformer(**chaos)
+        else:
+            transformer = chaos
+        return transformer.transform(rows)
 
     def _enforce_unique_together(
         self, rows: list[dict[str, Any]], target: int
@@ -1209,3 +1306,111 @@ class Schema:
             remaining -= chunk
 
         return pl.concat(frames)
+
+    # ------------------------------------------------------------------
+    # Streaming to message queues
+    # ------------------------------------------------------------------
+
+    def stream_to(
+        self,
+        emitter: Any,
+        count: int = 1000,
+        batch_size: int = 100,
+        rate_limit: float | None = None,
+    ) -> int:
+        """Stream generated data to an emitter (HTTP, Kafka, RabbitMQ).
+
+        Parameters
+        ----------
+        emitter : StreamEmitter
+            The target emitter instance.
+        count : int
+            Total rows to emit.
+        batch_size : int
+            Rows per batch.
+        rate_limit : float | None
+            Max rows per second.  ``None`` = unlimited.
+
+        Returns
+        -------
+        int
+            Number of rows emitted.
+        """
+        from dataforge.streaming import stream_batch_to_emitter, TokenBucketRateLimiter
+
+        limiter = None
+        if rate_limit is not None:
+            limiter = TokenBucketRateLimiter(rate=rate_limit, burst=max(1, batch_size))
+        return stream_batch_to_emitter(
+            self, emitter, count=count, batch_size=batch_size, rate_limiter=limiter
+        )
+
+    def stream_to_http(
+        self,
+        url: str,
+        count: int = 1000,
+        batch_size: int = 100,
+        headers: dict[str, str] | None = None,
+        rate_limit: float | None = None,
+    ) -> int:
+        """Stream generated data to an HTTP endpoint via POST.
+
+        Parameters
+        ----------
+        url : str
+            Target URL.
+        count : int
+            Total rows.
+        batch_size : int
+            Rows per batch POST.
+        headers : dict | None
+            Additional HTTP headers.
+        rate_limit : float | None
+            Max rows per second.
+
+        Returns
+        -------
+        int
+        """
+        from dataforge.streaming import HttpEmitter
+
+        emitter = HttpEmitter(url=url, headers=headers, batch_mode=True)
+        return self.stream_to(
+            emitter, count=count, batch_size=batch_size, rate_limit=rate_limit
+        )
+
+    def stream_to_kafka(
+        self,
+        bootstrap_servers: str = "localhost:9092",
+        topic: str = "dataforge",
+        count: int = 1000,
+        batch_size: int = 100,
+        rate_limit: float | None = None,
+    ) -> int:
+        """Stream generated data to a Kafka topic.
+
+        Requires ``confluent-kafka``.
+
+        Parameters
+        ----------
+        bootstrap_servers : str
+            Kafka bootstrap servers.
+        topic : str
+            Kafka topic.
+        count : int
+            Total rows.
+        batch_size : int
+            Rows per batch.
+        rate_limit : float | None
+            Max rows per second.
+
+        Returns
+        -------
+        int
+        """
+        from dataforge.streaming import KafkaEmitter
+
+        emitter = KafkaEmitter(bootstrap_servers=bootstrap_servers, topic=topic)
+        return self.stream_to(
+            emitter, count=count, batch_size=batch_size, rate_limit=rate_limit
+        )

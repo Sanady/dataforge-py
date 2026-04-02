@@ -9,6 +9,18 @@ authors = [
 requires-python = ">=3.12"
 dependencies = []
 
+[project.optional-dependencies]
+kafka = ["confluent-kafka>=2.0"]
+rabbitmq = ["pika>=1.3"]
+tui = ["textual>=0.40"]
+db = ["sqlalchemy>=2.0"]
+all = [
+    "confluent-kafka>=2.0",
+    "pika>=1.3",
+    "textual>=0.40",
+    "sqlalchemy>=2.0",
+]
+
 [project.scripts]
 dataforge = "dataforge.cli:main"
 
