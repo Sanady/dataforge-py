@@ -30,6 +30,17 @@ forge.person.first_name(count=1_000_000) # 1M names in ~55ms
 - [Pytest Plugin](#pytest-plugin)
 - [Unique Values](#unique-values)
 - [Locales](#locales) (17 locales)
+- **Advanced Features**
+  - [Time-Series Generation](#time-series-generation)
+  - [Schema Inference](#schema-inference)
+  - [Chaos Testing](#chaos-testing)
+  - [Constraint Engine](#constraint-engine)
+  - [PII Anonymization](#pii-anonymization)
+  - [Database Seeding](#database-seeding)
+  - [OpenAPI / JSON Schema Import](#openapi--json-schema-import)
+  - [Streaming to Message Queues](#streaming-to-message-queues)
+  - [Interactive TUI](#interactive-tui)
+- [Examples](#examples)
 - [Benchmarks](#benchmarks)
 - [CI/CD](#cicd)
 - [Contributing](#contributing)
@@ -39,7 +50,7 @@ forge.person.first_name(count=1_000_000) # 1M names in ~55ms
 
 ## Features
 
-- **High Performance** — scalar generation at millions of items/s, batch generation at ~18M items/s, CSV export at ~92K rows/s
+- **High Performance** — scalar generation at millions of items/s, batch generation at ~18M items/s, schema generation at ~343K rows/s
 - **Vectorized Batches** — every method accepts `count=N` and returns a list, using optimized batch paths with vectorized internals for internet, datetime, and finance providers
 - **Zero Dependencies** — core library has no external dependencies
 - **Type Safe** — fully typed with PEP 484 type hints and `@overload` signatures
@@ -51,6 +62,15 @@ forge.person.first_name(count=1_000_000) # 1M names in ~55ms
 - **Streaming Export** — memory-efficient streaming writes for arbitrarily large datasets
 - **Pytest Plugin** — `forge`, `fake`, and `forge_unseeded` fixtures with seed markers
 - **Unique Values** — three-layer proxy with set-based dedup and adaptive over-sampling for batches
+- **Time-Series** — generate synthetic time-series with trends, seasonality, noise, anomalies, and regime changes
+- **Schema Inference** — auto-detect types and semantic patterns from CSV, DataFrames, or records
+- **Chaos Testing** — inject nulls, type mismatches, boundary values, encoding chaos, and more for data quality testing
+- **Constraint Engine** — geographic hierarchies, temporal ordering, statistical correlation, conditional pools, and range constraints
+- **PII Anonymization** — deterministic HMAC-SHA256 anonymization with format-preserving output and referential integrity
+- **Database Seeding** — SQLAlchemy-powered table introspection and bulk insertion with dialect optimizations
+- **OpenAPI / JSON Schema Import** — generate fake data from API specs with `$ref` resolution
+- **Streaming to Queues** — emit data to HTTP, Kafka, or RabbitMQ with token-bucket rate limiting
+- **Interactive TUI** — terminal UI for browsing providers, building schemas, and exporting data
 - **27 Providers** — person, address, internet, company, phone, finance, datetime, color, file, network, lorem, barcode, misc, automotive, crypto, ecommerce, education, geo, government, medical, payment, profile, science, text, ai\_prompt, llm, ai\_chat
 - **17 Locales** — en\_US, en\_GB, en\_AU, en\_CA, de\_DE, fr\_FR, es\_ES, it\_IT, pt\_BR, nl\_NL, pl\_PL, ru\_RU, ar\_SA, hi\_IN, ja\_JP, ko\_KR, zh\_CN
 
@@ -58,10 +78,10 @@ forge.person.first_name(count=1_000_000) # 1M names in ~55ms
 
 ```bash
 # Standard installation (zero dependencies)
-pip install dataforge
+pip install dataforge-py
 
 # With uv
-uv add dataforge
+uv add dataforge-py
 ```
 
 **Optional integrations** (install separately as needed):
@@ -71,7 +91,17 @@ pip install pyarrow    # to_arrow(), to_parquet()
 pip install polars     # to_polars()
 pip install pandas     # to_dataframe()
 pip install pydantic   # schema_from_pydantic()
-pip install sqlalchemy # schema_from_sqlalchemy()
+pip install sqlalchemy # schema_from_sqlalchemy(), DatabaseSeeder
+```
+
+**Optional extras** (bundled in pyproject.toml):
+
+```bash
+pip install dataforge-py[db]       # SQLAlchemy (database seeding)
+pip install dataforge-py[kafka]    # confluent-kafka (Kafka streaming)
+pip install dataforge-py[rabbitmq] # pika (RabbitMQ streaming)
+pip install dataforge-py[tui]      # textual (interactive TUI)
+pip install dataforge-py[all]      # all optional extras
 ```
 
 **Requires Python >= 3.12.**
@@ -808,6 +838,587 @@ forge = DataForge(locale="ja_JP")
 forge.person.full_name()  # "田中太郎"
 ```
 
+---
+
+## Time-Series Generation
+
+Generate synthetic time-series data with configurable trends, seasonality, noise, anomalies, regime changes, missing data, and spikes.
+
+```python
+from dataforge import DataForge
+from dataforge.timeseries import TimeSeriesSchema
+
+forge = DataForge(seed=42)
+
+ts = TimeSeriesSchema(
+    forge,
+    start="2024-01-01",
+    end="2024-03-31",
+    interval="1h",
+    fields={
+        "temperature": {
+            "base": 20.0,
+            "trend": 0.01,
+            "seasonality": {"period": 24, "amplitude": 5.0},
+            "noise": 0.5,
+        },
+        "humidity": {
+            "base": 60.0,
+            "trend": -0.005,
+            "seasonality": {"period": 24, "amplitude": 10.0},
+            "noise": 2.0,
+        },
+    },
+)
+
+# Generate all rows at once
+rows = ts.generate()  # list[dict] with "timestamp", "temperature", "humidity"
+
+# Stream for large datasets
+for row in ts.stream():
+    process(row)
+
+# Export directly
+ts.to_csv("sensor_data.csv")
+ts.to_json("sensor_data.json")
+df = ts.to_dataframe()  # requires pandas
+```
+
+### Field Configuration
+
+Each field supports the following options:
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `base` | `float` | Starting value (default: `0.0`) |
+| `trend` | `float` | Linear trend per time step (default: `0.0`) |
+| `seasonality` | `dict` | `{"period": N, "amplitude": A}` — sinusoidal cycle |
+| `noise` | `float` | Gaussian noise standard deviation (default: `0.0`) |
+| `anomaly_rate` | `float` | Fraction of points with anomalous spikes (0–1) |
+| `anomaly_scale` | `float` | Multiplier for anomaly magnitude |
+| `regime_changes` | `int` | Number of abrupt level shifts |
+| `missing_rate` | `float` | Fraction of values replaced with `None` |
+| `spike_rate` | `float` | Fraction of sudden sharp spikes |
+| `clamp` | `tuple` | `(min, max)` — clamp output to range |
+
+### Intervals
+
+Supported interval suffixes: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks). Examples: `"30s"`, `"5m"`, `"1h"`, `"1d"`, `"1w"`.
+
+### Convenience Method
+
+```python
+# Via the DataForge instance
+ts = forge.timeseries(
+    start="2024-01-01",
+    end="2024-12-31",
+    interval="1h",
+    fields={"temperature": {"base": 20.0, "noise": 1.0}},
+)
+```
+
+---
+
+## Schema Inference
+
+Automatically detect column types and semantic patterns from existing data, then generate matching fake data.
+
+```python
+from dataforge import DataForge
+from dataforge.inference import SchemaInferrer
+
+forge = DataForge(seed=42)
+inferrer = SchemaInferrer(forge)
+
+# From a list of dicts
+schema = inferrer.from_records([
+    {"name": "Alice", "email": "alice@test.com", "age": 30},
+    {"name": "Bob", "email": "bob@test.com", "age": 25},
+])
+fake_rows = schema.generate(count=1000)
+
+# From a CSV file
+schema = inferrer.from_csv("customers.csv")
+
+# From a pandas DataFrame
+schema = inferrer.from_dataframe(df)
+
+# Inspect what was detected
+print(inferrer.describe())
+```
+
+### Detected Semantic Types
+
+The inferrer recognizes 16+ semantic types via regex matching and column name heuristics:
+
+| Type | Detection Method |
+|------|-----------------|
+| Email | Regex + column name |
+| Phone | Regex pattern |
+| UUID | UUID v4/v7 format |
+| IPv4 / IPv6 | IP address pattern |
+| URL | `http(s)://` prefix |
+| SSN | `NNN-NN-NNNN` pattern |
+| Date / DateTime | ISO format detection |
+| Credit card | Luhn-valid digit strings |
+| Boolean | `true`/`false` values |
+| Integer / Float | Numeric detection |
+| Zip code | Column name heuristic |
+| First / Last name | Column name heuristic |
+| City / State / Country | Column name heuristic |
+
+### Convenience Method
+
+```python
+# Via the DataForge instance
+schema = forge.infer_schema([
+    {"name": "Alice", "email": "alice@test.com"},
+    {"name": "Bob", "email": "bob@test.com"},
+])
+```
+
+---
+
+## Chaos Testing
+
+Inject realistic data quality problems into generated data for testing pipeline resilience. All rates are per-cell probabilities.
+
+```python
+from dataforge import DataForge
+from dataforge.chaos import ChaosTransformer
+
+forge = DataForge(seed=42)
+schema = forge.schema(["first_name", "email", "city"])
+rows = schema.generate(count=1000)
+
+# Configure injection rates
+chaos = ChaosTransformer(
+    null_rate=0.05,          # 5% of cells become None
+    type_mismatch_rate=0.02, # 2% get wrong types (int→str, etc.)
+    boundary_rate=0.01,      # 1% get boundary values ("", "NaN", MAX_INT)
+    duplicate_rate=0.03,     # 3% of rows are duplicated
+    whitespace_rate=0.02,    # 2% get whitespace issues
+    encoding_rate=0.01,      # 1% get encoding chaos (mojibake, BOM)
+    format_rate=0.02,        # 2% get format inconsistencies
+    truncation_rate=0.01,    # 1% get truncated values
+)
+
+dirty_rows = chaos.transform(rows)
+```
+
+### Injection Types
+
+| Type | Description | Examples |
+|------|-------------|---------|
+| `null` | Replace value with `None` | `None` |
+| `type_mismatch` | Replace with wrong type | `123` → `"123"`, `"foo"` → `0` |
+| `boundary` | Replace with boundary values | `""`, `"NaN"`, `"null"`, `sys.maxsize` |
+| `duplicate` | Duplicate entire rows | Row appears 2+ times |
+| `whitespace` | Inject whitespace issues | Leading/trailing spaces, tabs, newlines |
+| `encoding` | Inject encoding problems | Mojibake, BOM markers, zero-width chars |
+| `format` | Inconsistent formatting | Mixed case, date format variations |
+| `truncation` | Truncate string values | `"Hello World"` → `"Hello"` |
+
+### Schema Integration
+
+Apply chaos directly when generating schema data:
+
+```python
+chaos = ChaosTransformer(null_rate=0.1, type_mismatch_rate=0.05)
+schema = forge.schema(["first_name", "email"], chaos=chaos)
+dirty_rows = schema.generate(count=1000)  # chaos applied automatically
+```
+
+### Targeting Specific Columns
+
+```python
+chaos = ChaosTransformer(
+    null_rate=0.1,
+    columns=["email", "phone"],  # only affect these columns
+)
+```
+
+---
+
+## Constraint Engine
+
+Generate data with inter-field dependencies: geographic hierarchies, temporal ordering, statistical correlation, conditional value pools, and range constraints.
+
+Constraints are defined via dict-based field specs in `forge.schema()`. The engine builds a dependency DAG, performs topological sort, and uses a two-pass strategy: independent fields are batched column-first (fast path), then dependent fields are resolved row-by-row.
+
+### Geographic Hierarchy
+
+Generate valid country → state → city combinations for 10 countries:
+
+```python
+forge = DataForge(seed=42)
+schema = forge.schema({
+    "country": "country",
+    "state": {"field": "address.state", "depends_on": "country"},
+    "city": {"field": "address.city", "depends_on": "state"},
+})
+rows = schema.generate(count=100)
+# Each row has a valid country/state/city combination
+```
+
+Supported countries: US, GB, AU, CA, DE, FR, ES, IT, BR, NL.
+
+### Temporal Constraint
+
+Ensure one date always comes after another:
+
+```python
+schema = forge.schema({
+    "start_date": "date",
+    "end_date": {
+        "field": "date",
+        "temporal": "after",
+        "reference": "start_date",
+    },
+})
+rows = schema.generate(count=100)
+# end_date is always after start_date
+```
+
+### Statistical Correlation (Cholesky)
+
+Generate correlated numeric fields using a Cholesky decomposition:
+
+```python
+schema = forge.schema({
+    "height": "float",
+    "weight": {
+        "field": "float",
+        "correlate": "height",
+        "correlation": 0.85,  # Pearson r ≈ 0.85
+    },
+})
+rows = schema.generate(count=1000)
+```
+
+### Conditional Value Pools
+
+Assign values based on another field's value:
+
+```python
+schema = forge.schema({
+    "department": "random_element",
+    "job_title": {
+        "field": "job_title",
+        "conditional_on": "department",
+        "pools": {
+            "Engineering": ["Software Engineer", "DevOps Lead", "QA Analyst"],
+            "Marketing": ["Brand Manager", "SEO Specialist", "Content Writer"],
+            "Sales": ["Account Executive", "Sales Director", "BDR"],
+        },
+    },
+})
+```
+
+### Range Constraint
+
+Clamp numeric fields within bounds:
+
+```python
+schema = forge.schema({
+    "salary": {
+        "field": "float",
+        "range": {"min": 30000, "max": 200000},
+    },
+})
+```
+
+---
+
+## PII Anonymization
+
+Replace personally identifiable information with realistic fake data using deterministic HMAC-SHA256 seeding. The same real value always maps to the same fake value across tables and runs, preserving referential integrity.
+
+```python
+from dataforge import DataForge
+from dataforge.anonymizer import Anonymizer
+
+forge = DataForge(seed=42)
+anon = Anonymizer(forge, secret="my-secret-key")
+
+# Anonymize a list of dicts
+original = [
+    {"name": "Alice Smith", "email": "alice@real.com", "ssn": "123-45-6789"},
+    {"name": "Bob Jones", "email": "bob@real.com", "ssn": "987-65-4321"},
+]
+anonymized = anon.anonymize(original, fields={
+    "name": "full_name",
+    "email": "email",
+    "ssn": "ssn",
+})
+# {"name": "James Wilson", "email": "james.wilson@gmail.com", "ssn": "456-78-9012"}
+```
+
+### Referential Integrity
+
+Because seeding is deterministic, the same input always produces the same output. If `"alice@real.com"` appears in both a `users` table and an `orders` table, it maps to the same fake email in both:
+
+```python
+# Table 1: users
+users = anon.anonymize(user_records, fields={"email": "email"})
+
+# Table 2: orders (same "alice@real.com" maps to same fake email)
+orders = anon.anonymize(order_records, fields={"customer_email": "email"})
+```
+
+### Format-Preserving Output
+
+Emails retain `user@domain.tld` structure. Phone numbers retain digit patterns. SSNs retain `NNN-NN-NNNN` format.
+
+### Streaming CSV Anonymization
+
+For large files that don't fit in memory:
+
+```python
+anon.anonymize_csv(
+    "input.csv",
+    "output.csv",
+    fields={"name": "full_name", "email": "email", "ssn": "ssn"},
+)
+```
+
+---
+
+## Database Seeding
+
+Populate databases with realistic fake data using SQLAlchemy introspection. Requires `pip install dataforge-py[db]`.
+
+```python
+from dataforge import DataForge
+from dataforge.seeder import DatabaseSeeder
+
+forge = DataForge(seed=42)
+seeder = DatabaseSeeder(forge, "sqlite:///test.db")
+
+# Seed a single table (auto-detects column types)
+seeder.seed_table("users", count=1000)
+
+# Seed with field overrides
+seeder.seed_table("users", count=1000, field_overrides={
+    "email": "email",
+    "created_at": "datetime",
+})
+
+# Seed related tables with foreign key resolution
+seeder.seed_relational({
+    "users": {"count": 100},
+    "orders": {"count": 500, "parent": "users"},
+    "order_items": {"count": 2000, "parent": "orders"},
+})
+```
+
+### How It Works
+
+1. **Introspection** — Reads table schemas via SQLAlchemy `inspect()`, maps column names and types to DataForge providers using heuristic matching
+2. **Field Override** — Override any column with a specific DataForge field name
+3. **Relational Seeding** — `seed_relational()` resolves parent→child FK relationships and populates tables in correct dependency order
+
+### Dialect Optimizations
+
+| Dialect | Optimization |
+|---------|-------------|
+| SQLite | Disables journal mode and synchronous writes for faster inserts |
+| MySQL | Temporarily disables FK checks and uses multi-row INSERT |
+| PostgreSQL | Uses standard batched inserts |
+
+---
+
+## OpenAPI / JSON Schema Import
+
+Generate fake data conforming to OpenAPI 3.x specs or JSON Schema definitions. Resolves `$ref` references and maps types/formats to DataForge providers.
+
+```python
+from dataforge import DataForge
+from dataforge.openapi import OpenAPIParser
+
+forge = DataForge(seed=42)
+parser = OpenAPIParser(forge)
+
+# From an OpenAPI spec file (YAML or JSON)
+schemas = parser.from_file("openapi.yaml")
+users = schemas["User"].generate(count=100)
+
+# From an OpenAPI spec dict
+schemas = parser.from_openapi(spec_dict)
+
+# From a standalone JSON Schema
+schema = parser.from_json_schema({
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "email": {"type": "string", "format": "email"},
+        "age": {"type": "integer", "minimum": 18, "maximum": 99},
+    },
+})
+rows = schema.generate(count=50)
+```
+
+### Type and Format Mapping
+
+| JSON Schema Type | Format | DataForge Field |
+|-----------------|--------|-----------------|
+| `string` | `email` | `email` |
+| `string` | `uri` / `url` | `url` |
+| `string` | `hostname` | `hostname` |
+| `string` | `ipv4` / `ipv6` | `ipv4` / `ipv6` |
+| `string` | `uuid` | `uuid4` |
+| `string` | `date` | `date` |
+| `string` | `date-time` | `datetime` |
+| `string` | (none) | `lorem.sentence` |
+| `integer` | — | random int (respects `minimum`/`maximum`) |
+| `number` | — | random float (respects `minimum`/`maximum`) |
+| `boolean` | — | `boolean` |
+
+### $ref Resolution
+
+Nested `$ref` references (e.g., `"$ref": "#/components/schemas/Address"`) are resolved automatically, supporting deeply nested and recursive schemas.
+
+---
+
+## Streaming to Message Queues
+
+Emit generated data to HTTP endpoints, Kafka topics, or RabbitMQ queues with built-in rate limiting. Core HTTP streaming uses stdlib only; Kafka and RabbitMQ require optional extras.
+
+### HTTP Streaming (zero dependencies)
+
+```python
+from dataforge import DataForge
+from dataforge.streaming import HttpEmitter, stream_to_emitter
+
+forge = DataForge(seed=42)
+schema = forge.schema(["first_name", "email", "city"])
+
+emitter = HttpEmitter(
+    url="https://api.example.com/ingest",
+    headers={"Authorization": "Bearer token"},
+)
+
+stream_to_emitter(schema, emitter, count=10_000)
+```
+
+### Kafka Streaming
+
+Requires `pip install dataforge-py[kafka]`:
+
+```python
+from dataforge.streaming import KafkaEmitter
+
+emitter = KafkaEmitter(
+    bootstrap_servers="localhost:9092",
+    topic="users",
+)
+stream_to_emitter(schema, emitter, count=100_000)
+```
+
+### RabbitMQ Streaming
+
+Requires `pip install dataforge-py[rabbitmq]`:
+
+```python
+from dataforge.streaming import RabbitMQEmitter
+
+emitter = RabbitMQEmitter(
+    host="localhost",
+    queue="users",
+)
+stream_to_emitter(schema, emitter, count=100_000)
+```
+
+### Rate Limiting
+
+Token-bucket rate limiter for controlling throughput:
+
+```python
+from dataforge.streaming import TokenBucketRateLimiter
+
+limiter = TokenBucketRateLimiter(rate=100, burst=20)  # 100 msgs/sec, burst of 20
+stream_to_emitter(schema, emitter, count=10_000, rate_limiter=limiter)
+```
+
+### Custom Emitters
+
+Extend the abstract `StreamEmitter` base class:
+
+```python
+from dataforge.streaming import StreamEmitter
+
+class MyEmitter(StreamEmitter):
+    def emit(self, record: dict) -> None:
+        # Send record to your system
+        ...
+
+    def flush(self) -> None:
+        # Flush any buffered records
+        ...
+
+    def close(self) -> None:
+        # Clean up resources
+        ...
+```
+
+---
+
+## Interactive TUI
+
+A Textual-based terminal UI for browsing providers, building schemas, previewing data, and exporting. Requires `pip install dataforge-py[tui]`.
+
+```bash
+# Launch the TUI
+python -m dataforge.tui
+
+# Or from Python
+from dataforge.tui import DataForgeTUI
+app = DataForgeTUI()
+app.run()
+```
+
+### Layout
+
+The TUI has a three-panel layout:
+
+1. **Left panel** — Provider/field tree browser
+2. **Center panel** — Data preview table
+3. **Right panel** — Schema configuration
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `a` | Add selected field to schema |
+| `r` | Remove field from schema |
+| `g` | Generate preview data |
+| `e` | Open export dialog |
+| `c` | Clear schema |
+| `q` | Quit |
+
+### Export Formats
+
+The export dialog supports CSV, JSON, JSONL, and SQL output with configurable row counts and file paths.
+
+---
+
+## Examples
+
+The [`examples/`](examples/) directory contains comprehensive real-world usage examples:
+
+| File | Description |
+|------|-------------|
+| [`01_timeseries.py`](examples/01_timeseries.py) | IoT sensor monitoring with regime changes and multi-sensor setups |
+| [`02_schema_inference.py`](examples/02_schema_inference.py) | Auto-detect schemas from records and CSV files |
+| [`03_chaos_testing.py`](examples/03_chaos_testing.py) | Inject data quality issues for pipeline resilience testing |
+| [`04_constraints.py`](examples/04_constraints.py) | Geographic hierarchies, temporal, correlation, and conditional constraints |
+| [`05_anonymizer.py`](examples/05_anonymizer.py) | PII masking with referential integrity and streaming CSV |
+| [`06_database_seeding.py`](examples/06_database_seeding.py) | SQLAlchemy introspection and relational seeding |
+| [`07_openapi_import.py`](examples/07_openapi_import.py) | Generate data from JSON Schema and OpenAPI specs |
+| [`08_streaming.py`](examples/08_streaming.py) | HTTP/Kafka/RabbitMQ streaming with rate limiting |
+| [`09_tui.py`](examples/09_tui.py) | Interactive TUI launch and keyboard shortcuts |
+| [`10_real_world_scenarios.py`](examples/10_real_world_scenarios.py) | Combined scenarios: e-commerce, healthcare, IoT, API testing |
+
 ## Benchmarks
 
 DataForge is built for speed. Results from a standard developer machine:
@@ -816,36 +1427,36 @@ DataForge is built for speed. Results from a standard developer machine:
 
 | Operation | Speed |
 |-----------|-------|
-| `misc.boolean()` | **9.2M items/s** |
-| `person.first_name()` | **3.2M items/s** |
-| `address.city()` | **3.1M items/s** |
-| `dt.timezone()` | **3.2M items/s** |
-| `network.port()` | **2.4M items/s** |
-| `network.user_agent()` | **3.0M items/s** |
+| `misc.boolean()` | **8.5M items/s** |
+| `person.first_name()` | **3.7M items/s** |
+| `address.city()` | **3.4M items/s** |
+| `dt.timezone()` | **3.6M items/s** |
+| `network.port()` | **2.6M items/s** |
+| `network.user_agent()` | **3.3M items/s** |
 | `file.file_name()` | **1.5M items/s** |
-| `dt.unix_timestamp()` | **1.3M items/s** |
-| `finance.bic()` | **930K items/s** |
+| `dt.unix_timestamp()` | **2.0M items/s** |
+| `finance.bic()` | **1.2M items/s** |
 
 ### Batch Generation (1M items)
 
 | Operation | Speed |
 |-----------|-------|
-| `person.first_name(count=1M)` | **18M items/s** |
-| `address.city(count=1M)` | **17M items/s** |
+| `person.first_name(count=1M)` | **15M items/s** |
+| `address.city(count=1M)` | **14M items/s** |
 | `dt.timezone(count=1M)` | **18M items/s** |
-| `network.user_agent(count=1M)` | **19M items/s** |
-| `person.full_name(count=1M)` | **4.7M items/s** |
-| `address.country(count=1M)` | **3.6M items/s** |
+| `network.user_agent(count=1M)` | **18M items/s** |
+| `person.full_name(count=1M)` | **4.2M items/s** |
+| `address.country(count=1M)` | **15M items/s** |
 | `file.file_name(count=1M)` | **1.6M items/s** |
-| `finance.bic(count=1M)` | **1.0M items/s** |
+| `finance.bic(count=1M)` | **1.3M items/s** |
 
 ### Schema API (5 columns)
 
 | Operation | Speed |
 |-----------|-------|
-| `generate(100K)` | **108K rows/s** |
-| `to_csv(100K)` | **92K rows/s** |
-| `stream(100K)` | **110K rows/s** |
+| `generate(100K)` | **343K rows/s** |
+| `to_csv(100K)` | **312K rows/s** |
+| `stream(100K)` | **359K rows/s** |
 
 Run benchmarks locally:
 
@@ -907,7 +1518,7 @@ Contributions are welcome. Please follow these guidelines:
 git clone https://github.com/yourusername/dataforge.git
 cd dataforge
 uv sync          # install all dependencies
-uv run pytest    # run tests (1671 tests)
+uv run pytest    # run tests (1870 tests)
 uv run ruff check src/ tests/        # lint
 uv run ruff format --check src/ tests/ # format check
 uv run python benchmark.py           # run benchmarks
