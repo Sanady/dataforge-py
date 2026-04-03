@@ -51,13 +51,18 @@ science = "dataforge.providers.science"
 text = "dataforge.providers.text"
 ai_prompt = "dataforge.providers.ai_prompt"
 llm = "dataforge.providers.llm"
-ai_chat = "dataforge.providers.ai_chat"
 
 [project.entry-points.pytest11]
 dataforge = "dataforge.pytest_plugin"
 
 [dependency-groups]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "ruff>=0.9"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "ruff>=0.15.4,<0.16"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
 
 [tool.uv.build-backend]
 module-name = "dataforge"

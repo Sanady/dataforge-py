@@ -24,8 +24,6 @@ def _validate_isbn10_check_digit(code: str) -> bool:
 
 
 class TestBarcodeScalar:
-    """Tests for single-item barcode generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -75,8 +73,6 @@ class TestBarcodeScalar:
 
 
 class TestBarcodeCheckDigits:
-    """Validate check digits are computed correctly."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -106,8 +102,6 @@ class TestBarcodeCheckDigits:
 
 
 class TestBarcodeBatch:
-    """Tests for batch barcode generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 

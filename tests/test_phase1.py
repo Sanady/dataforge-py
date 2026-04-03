@@ -9,14 +9,10 @@ import pytest
 from dataforge import DataForge, __version__
 
 
-# ======================================================================
 # Native type preservation
-# ======================================================================
 
 
 class TestNativeTypes:
-    """Test that generate() and to_dict() preserve native Python types."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -75,7 +71,6 @@ class TestNativeTypes:
             assert isinstance(row["first_name"], str)
 
     def test_csv_stringifies(self) -> None:
-        """CSV output should convert all values to strings."""
         schema = self.forge.schema(["port", "boolean"])
         csv_str = schema.to_csv(count=3)
         reader = csv.DictReader(io.StringIO(csv_str))
@@ -93,7 +88,6 @@ class TestNativeTypes:
         assert ";" in sql
 
     def test_generate_count_one_preserves_types(self) -> None:
-        """Even count=1 should return native types, not str-coerced."""
         schema = self.forge.schema(["port", "boolean"])
         rows = schema.generate(count=1)
         assert len(rows) == 1
@@ -101,14 +95,10 @@ class TestNativeTypes:
         assert isinstance(rows[0]["boolean"], bool)
 
 
-# ======================================================================
-# Schema.to_json()
-# ======================================================================
+# CSV delimiter support
 
 
 class TestSchemaToJson:
-    """Test the new Schema.to_json() method."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -134,14 +124,10 @@ class TestSchemaToJson:
         assert "first_name" in data[0]
 
 
-# ======================================================================
 # CSV delimiter support
-# ======================================================================
 
 
 class TestCsvDelimiter:
-    """Test CSV delimiter parameter."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -172,7 +158,6 @@ class TestCsvDelimiter:
         assert "\t" in content
 
     def test_core_to_csv_delimiter(self) -> None:
-        """Test that core.to_csv passes delimiter through."""
         result = self.forge.to_csv(["first_name", "email"], count=3, delimiter="|")
         lines = result.strip().split("\n")
         assert "|" in lines[0]
@@ -187,14 +172,10 @@ class TestCsvDelimiter:
         assert "\t" in content
 
 
-# ======================================================================
-# DataForge.to_json() convenience method
-# ======================================================================
+# Introspection API: list_providers, list_fields
 
 
 class TestCoreToJson:
-    """Test core.to_json() convenience method."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -212,14 +193,10 @@ class TestCoreToJson:
         assert len(data) == 5
 
 
-# ======================================================================
 # Introspection API: list_providers, list_fields
-# ======================================================================
 
 
 class TestIntrospectionAPI:
-    """Test DataForge.list_providers() and list_fields()."""
-
     def test_list_providers_returns_sorted_list(self) -> None:
         providers = DataForge.list_providers()
         assert isinstance(providers, list)
@@ -259,14 +236,10 @@ class TestIntrospectionAPI:
         assert fields["email"] == ("internet", "email")
 
 
-# ======================================================================
 # Type-aware Pydantic mapping
-# ======================================================================
 
 
 class TestPydanticTypeAware:
-    """Test type-aware Pydantic model introspection."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -402,14 +375,10 @@ class TestPydanticTypeAware:
             self.forge.schema_from_pydantic(BadModel)
 
 
-# ======================================================================
 # Type-aware SQLAlchemy mapping
-# ======================================================================
 
 
 class TestSQLAlchemyTypeAware:
-    """Test type-aware SQLAlchemy model introspection."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -530,14 +499,10 @@ class TestSQLAlchemyTypeAware:
         assert "first_name" in rows[0]
 
 
-# ======================================================================
 # CLI enhancements
-# ======================================================================
 
 
 class TestCliVersion:
-    """Test --version flag."""
-
     def test_version_output(self, capsys: pytest.CaptureFixture[str]) -> None:
         from dataforge.cli import main
 
@@ -549,8 +514,6 @@ class TestCliVersion:
 
 
 class TestCliListProviders:
-    """Test --list-providers flag."""
-
     def test_list_providers_returns_zero(self) -> None:
         from dataforge.cli import main
 
@@ -567,8 +530,6 @@ class TestCliListProviders:
 
 
 class TestCliSqlFormat:
-    """Test --format sql."""
-
     def test_sql_output(self, capsys: pytest.CaptureFixture[str]) -> None:
         from dataforge.cli import main
 
@@ -635,8 +596,6 @@ class TestCliSqlFormat:
 
 
 class TestCliTsvFormat:
-    """Test --format tsv."""
-
     def test_tsv_output(self, capsys: pytest.CaptureFixture[str]) -> None:
         from dataforge.cli import main
 
@@ -653,8 +612,6 @@ class TestCliTsvFormat:
 
 
 class TestCliDelimiter:
-    """Test --delimiter flag."""
-
     def test_custom_delimiter(self, capsys: pytest.CaptureFixture[str]) -> None:
         from dataforge.cli import main
 
@@ -679,8 +636,6 @@ class TestCliDelimiter:
 
 
 class TestCliColumnRenaming:
-    """Test column renaming via Name=field_name syntax."""
-
     def test_column_renaming_json(self, capsys: pytest.CaptureFixture[str]) -> None:
         from dataforge.cli import main
 
@@ -741,8 +696,6 @@ class TestCliColumnRenaming:
 
 
 class TestCliUnique:
-    """Test --unique flag."""
-
     def test_unique_values(self, capsys: pytest.CaptureFixture[str]) -> None:
         from dataforge.cli import main
 
@@ -767,8 +720,6 @@ class TestCliUnique:
 
 
 class TestCliStream:
-    """Test --stream flag."""
-
     def test_stream_requires_output(self, capsys: pytest.CaptureFixture[str]) -> None:
         from dataforge.cli import main
 
@@ -849,14 +800,10 @@ class TestCliStream:
         assert result == 1
 
 
-# ======================================================================
 # Backend new methods
-# ======================================================================
 
 
 class TestBackendNewMethods:
-    """Test new methods added to RandomEngine."""
-
     def setup_method(self) -> None:
         from dataforge.backend import RandomEngine
 
@@ -950,14 +897,10 @@ class TestBackendNewMethods:
             assert 1 <= val <= 100
 
 
-# ======================================================================
 # SQL null handling
-# ======================================================================
 
 
 class TestSqlNullHandling:
-    """Test that None values produce SQL NULL."""
-
     def test_none_values_become_null(self) -> None:
         forge = DataForge(seed=42)
         schema = forge.schema(
@@ -970,26 +913,10 @@ class TestSqlNullHandling:
         assert "NULL" in sql
 
 
-# ======================================================================
-# Version bump
-# ======================================================================
-
-
-class TestVersionBump:
-    """Test version was bumped."""
-
-    def test_version_is_0_3_0(self) -> None:
-        assert __version__ == "0.3.0"
-
-
-# ======================================================================
 # Type resolution helpers
-# ======================================================================
 
 
 class TestTypeResolution:
-    """Test _resolve_type_annotation and _type_fallback helpers."""
-
     def test_resolve_plain_type(self) -> None:
         from dataforge.core import _resolve_type_annotation
 
@@ -1022,19 +949,16 @@ class TestTypeResolution:
         assert _type_fallback(bool) == "boolean"
 
     def test_type_fallback_str_returns_none(self) -> None:
-        """str is too ambiguous — should return None."""
         from dataforge.core import _type_fallback
 
         assert _type_fallback(str) is None
 
     def test_type_fallback_int_returns_none(self) -> None:
-        """int is too ambiguous — should return None."""
         from dataforge.core import _type_fallback
 
         assert _type_fallback(int) is None
 
     def test_type_fallback_float_returns_none(self) -> None:
-        """float is too ambiguous — should return None."""
         from dataforge.core import _type_fallback
 
         assert _type_fallback(float) is None

@@ -1,7 +1,5 @@
 """Medical / healthcare provider — ICD-10 codes, drugs, blood types, etc."""
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
 _BLOOD_TYPES: tuple[str, ...] = (
@@ -31,11 +29,6 @@ _ICD10_CATEGORIES: tuple[str, ...] = (
     "M",
     "N",
     "O",
-    "P",
-    "Q",
-    "R",
-    "S",
-    "T",
 )
 
 _DRUG_NAMES: tuple[str, ...] = (
@@ -59,36 +52,6 @@ _DRUG_NAMES: tuple[str, ...] = (
     "Prednisone",
     "Furosemide",
     "Ciprofloxacin",
-    "Pantoprazole",
-    "Escitalopram",
-    "Montelukast",
-    "Cephalexin",
-    "Tramadol",
-    "Fluoxetine",
-    "Trazodone",
-    "Clonazepam",
-    "Alprazolam",
-    "Duloxetine",
-    "Venlafaxine",
-    "Bupropion",
-    "Warfarin",
-    "Clopidogrel",
-    "Rosuvastatin",
-    "Doxycycline",
-    "Meloxicam",
-    "Carvedilol",
-    "Tamsulosin",
-    "Finasteride",
-    "Propranolol",
-    "Ranitidine",
-    "Cetirizine",
-    "Loratadine",
-    "Diphenhydramine",
-    "Methylprednisolone",
-    "Naproxen",
-    "Cyclobenzaprine",
-    "Diazepam",
-    "Oxycodone",
 )
 
 _DRUG_FORMS: tuple[str, ...] = (
@@ -130,27 +93,6 @@ _DIAGNOSES: tuple[str, ...] = (
     "Anemia",
     "Migraine",
     "Epilepsy",
-    "Rheumatoid Arthritis",
-    "Gout",
-    "Psoriasis",
-    "Eczema",
-    "Sleep Apnea",
-    "Celiac Disease",
-    "Irritable Bowel Syndrome",
-    "Crohn's Disease",
-    "Fibromyalgia",
-    "Osteoporosis",
-    "Glaucoma",
-    "Cataracts",
-    "Vertigo",
-    "Sinusitis",
-    "Tonsillitis",
-    "Influenza",
-    "COVID-19",
-    "Hepatitis B",
-    "Hepatitis C",
-    "HIV/AIDS",
-    "Tuberculosis",
 )
 
 _PROCEDURES: tuple[str, ...] = (
@@ -174,16 +116,6 @@ _PROCEDURES: tuple[str, ...] = (
     "Radiation Therapy",
     "Cardiac Catheterization",
     "Angioplasty",
-    "Appendectomy",
-    "Cholecystectomy",
-    "Knee Replacement",
-    "Hip Replacement",
-    "Cataract Surgery",
-    "Tonsillectomy",
-    "Cesarean Section",
-    "Hernia Repair",
-    "Coronary Bypass",
-    "Pacemaker Implantation",
 )
 
 _DOSAGE_UNITS: tuple[str, ...] = (
@@ -231,7 +163,13 @@ class MedicalProvider(BaseProvider):
         "mrn": "medical_record_number",
     }
 
-    # --- Scalar helpers ---
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "blood_type": _BLOOD_TYPES,
+        "drug_name": _DRUG_NAMES,
+        "drug_form": _DRUG_FORMS,
+        "diagnosis": _DIAGNOSES,
+        "procedure": _PROCEDURES,
+    }
 
     def _one_icd10(self) -> str:
         """Generate ICD-10 code format: A##.# or A##.##"""
@@ -248,115 +186,24 @@ class MedicalProvider(BaseProvider):
     def _one_mrn(self) -> str:
         return f"MRN-{self._engine.random_digits_str(8)}"
 
-    # --- Public API ---
-
-    @overload
-    def blood_type(self) -> str: ...
-    @overload
-    def blood_type(self, count: Literal[1]) -> str: ...
-    @overload
-    def blood_type(self, count: int) -> str | list[str]: ...
-    def blood_type(self, count: int = 1) -> str | list[str]:
-        """Generate a blood type (e.g., A+, O-, AB+)."""
-        if count == 1:
-            return self._engine.choice(_BLOOD_TYPES)
-        return self._engine.choices(_BLOOD_TYPES, count)
-
-    @overload
-    def realistic_blood_type(self) -> str: ...
-    @overload
-    def realistic_blood_type(self, count: Literal[1]) -> str: ...
-    @overload
-    def realistic_blood_type(self, count: int) -> str | list[str]: ...
     def realistic_blood_type(self, count: int = 1) -> str | list[str]:
-        """Generate a blood type with real-world frequency distribution.
-
-        Uses American Red Cross population statistics:
-        O+ 37.4%, A+ 35.7%, B+ 8.5%, O- 6.6%, A- 6.3%, AB+ 3.4%,
-        B- 1.5%, AB- 0.6%.
-        """
+        """Generate a blood type with real-world frequency distribution."""
         if count == 1:
             return self._engine.weighted_choice(_BLOOD_TYPES, _BLOOD_TYPE_WEIGHTS)
         return self._engine.weighted_choices(_BLOOD_TYPES, _BLOOD_TYPE_WEIGHTS, count)
 
-    @overload
-    def icd10_code(self) -> str: ...
-    @overload
-    def icd10_code(self, count: Literal[1]) -> str: ...
-    @overload
-    def icd10_code(self, count: int) -> str | list[str]: ...
     def icd10_code(self, count: int = 1) -> str | list[str]:
         """Generate an ICD-10 diagnostic code (e.g., A01.0)."""
         if count == 1:
             return self._one_icd10()
         return [self._one_icd10() for _ in range(count)]
 
-    @overload
-    def drug_name(self) -> str: ...
-    @overload
-    def drug_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def drug_name(self, count: int) -> str | list[str]: ...
-    def drug_name(self, count: int = 1) -> str | list[str]:
-        """Generate a drug/medication name."""
-        if count == 1:
-            return self._engine.choice(_DRUG_NAMES)
-        return self._engine.choices(_DRUG_NAMES, count)
-
-    @overload
-    def drug_form(self) -> str: ...
-    @overload
-    def drug_form(self, count: Literal[1]) -> str: ...
-    @overload
-    def drug_form(self, count: int) -> str | list[str]: ...
-    def drug_form(self, count: int = 1) -> str | list[str]:
-        """Generate a drug dosage form (e.g., Tablet, Capsule)."""
-        if count == 1:
-            return self._engine.choice(_DRUG_FORMS)
-        return self._engine.choices(_DRUG_FORMS, count)
-
-    @overload
-    def dosage(self) -> str: ...
-    @overload
-    def dosage(self, count: Literal[1]) -> str: ...
-    @overload
-    def dosage(self, count: int) -> str | list[str]: ...
     def dosage(self, count: int = 1) -> str | list[str]:
         """Generate a drug dosage (e.g., 500 mg)."""
         if count == 1:
             return self._one_dosage()
         return [self._one_dosage() for _ in range(count)]
 
-    @overload
-    def diagnosis(self) -> str: ...
-    @overload
-    def diagnosis(self, count: Literal[1]) -> str: ...
-    @overload
-    def diagnosis(self, count: int) -> str | list[str]: ...
-    def diagnosis(self, count: int = 1) -> str | list[str]:
-        """Generate a medical diagnosis."""
-        if count == 1:
-            return self._engine.choice(_DIAGNOSES)
-        return self._engine.choices(_DIAGNOSES, count)
-
-    @overload
-    def procedure(self) -> str: ...
-    @overload
-    def procedure(self, count: Literal[1]) -> str: ...
-    @overload
-    def procedure(self, count: int) -> str | list[str]: ...
-    def procedure(self, count: int = 1) -> str | list[str]:
-        """Generate a medical procedure name."""
-        if count == 1:
-            return self._engine.choice(_PROCEDURES)
-        return self._engine.choices(_PROCEDURES, count)
-
-    @overload
-    def medical_record_number(self) -> str: ...
-    @overload
-    def medical_record_number(self, count: Literal[1]) -> str: ...
-    @overload
-    def medical_record_number(self, count: int) -> str | list[str]: ...
     def medical_record_number(self, count: int = 1) -> str | list[str]:
         """Generate a medical record number (MRN-########)."""
         if count == 1:

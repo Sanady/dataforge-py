@@ -1,12 +1,8 @@
 """AI Prompt provider — user prompts, system prompts, prompt templates."""
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
-# ---------------------------------------------------------------------------
 # Module-level immutable tuples — zero per-call allocation
-# ---------------------------------------------------------------------------
 
 _USER_PROMPTS: tuple[str, ...] = (
     "Summarize this article in 3 bullet points",
@@ -29,16 +25,6 @@ _USER_PROMPTS: tuple[str, ...] = (
     "Summarize the key takeaways from this meeting",
     "What are the main arguments for and against this?",
     "Help me create an outline for this essay",
-    "Can you fact-check this statement?",
-    "Suggest a catchy title for this blog post",
-    "Help me write a thank you note",
-    "What are best practices for this workflow?",
-    "Rewrite this in a more formal tone",
-    "Break down this complex topic into simple parts",
-    "What should I consider before making this decision?",
-    "Help me prepare talking points for this meeting",
-    "Compare and contrast these two options",
-    "Give me feedback on this draft",
 )
 
 _CODING_PROMPTS: tuple[str, ...] = (
@@ -62,16 +48,6 @@ _CODING_PROMPTS: tuple[str, ...] = (
     "Write a migration script for this database change",
     "How do I implement caching for this endpoint?",
     "Help me write a recursive algorithm for this problem",
-    "Create a REST API client with proper error handling",
-    "Write a function to sanitize user input",
-    "Implement rate limiting for this API",
-    "How do I handle concurrent requests in this service?",
-    "Write a custom middleware for this web framework",
-    "Create a connection pool for this database",
-    "Help me implement WebSocket support",
-    "Write a function to parse and validate CSV data",
-    "Implement a producer-consumer pattern for this queue",
-    "How do I properly handle database transactions here?",
 )
 
 _CREATIVE_PROMPTS: tuple[str, ...] = (
@@ -90,11 +66,6 @@ _CREATIVE_PROMPTS: tuple[str, ...] = (
     "Write a letter from a time traveler to their past self",
     "Create a backstory for a video game character",
     "Write a flash fiction piece about a last sunset",
-    "Compose a children's story about a brave little cloud",
-    "Write a comedic sketch about office life",
-    "Create a recipe told as a love story",
-    "Write a news article from the year 2150",
-    "Describe a painting that doesn't exist yet",
 )
 
 _ANALYSIS_PROMPTS: tuple[str, ...] = (
@@ -113,11 +84,6 @@ _ANALYSIS_PROMPTS: tuple[str, ...] = (
     "Evaluate the ROI of this marketing campaign",
     "Analyze the demographic data for this region",
     "What trends emerge from this time series data?",
-    "Assess the technical debt in this codebase",
-    "Analyze the customer churn data for patterns",
-    "Evaluate the scalability of this architecture",
-    "What anomalies do you detect in this log data?",
-    "Analyze the A/B test results for statistical significance",
 )
 
 _SYSTEM_PROMPTS: tuple[str, ...] = (
@@ -136,11 +102,6 @@ _SYSTEM_PROMPTS: tuple[str, ...] = (
     "You are a legal assistant. Provide general information, not legal advice.",
     "You are a language tutor. Help users practice and improve their skills.",
     "You are a project manager. Help organize tasks and track progress.",
-    "You are a marketing strategist. Focus on growth and engagement.",
-    "You are a database administrator. Optimize queries and schema design.",
-    "You are a machine learning engineer. Focus on model performance.",
-    "You are a technical interviewer. Ask relevant and fair questions.",
-    "You are a documentation specialist. Keep things clear and organized.",
 )
 
 _PERSONA_ROLES: tuple[str, ...] = (
@@ -159,11 +120,6 @@ _PERSONA_ROLES: tuple[str, ...] = (
     "expert systems architect",
     "professional data engineer",
     "senior site reliability engineer",
-    "experienced mobile developer",
-    "expert network engineer",
-    "professional QA engineer",
-    "senior platform engineer",
-    "experienced AI researcher",
 )
 
 _PERSONA_TRAITS: tuple[str, ...] = (
@@ -289,92 +245,18 @@ class AiPromptProvider(BaseProvider):
         "few_shot_prompt": "few_shot_prompt",
     }
 
-    # --- Public API ---
-
-    @overload
-    def user_prompt(self) -> str: ...
-    @overload
-    def user_prompt(self, count: Literal[1]) -> str: ...
-    @overload
-    def user_prompt(self, count: int) -> str | list[str]: ...
-    def user_prompt(self, count: int = 1) -> str | list[str]:
-        """Generate a realistic user prompt (e.g. ChatGPT-style request)."""
-        if count == 1:
-            return self._engine.choice(_USER_PROMPTS)
-        return self._engine.choices(_USER_PROMPTS, count)
-
-    @overload
-    def coding_prompt(self) -> str: ...
-    @overload
-    def coding_prompt(self, count: Literal[1]) -> str: ...
-    @overload
-    def coding_prompt(self, count: int) -> str | list[str]: ...
-    def coding_prompt(self, count: int = 1) -> str | list[str]:
-        """Generate a coding-related prompt."""
-        if count == 1:
-            return self._engine.choice(_CODING_PROMPTS)
-        return self._engine.choices(_CODING_PROMPTS, count)
-
-    @overload
-    def creative_prompt(self) -> str: ...
-    @overload
-    def creative_prompt(self, count: Literal[1]) -> str: ...
-    @overload
-    def creative_prompt(self, count: int) -> str | list[str]: ...
-    def creative_prompt(self, count: int = 1) -> str | list[str]:
-        """Generate a creative writing prompt."""
-        if count == 1:
-            return self._engine.choice(_CREATIVE_PROMPTS)
-        return self._engine.choices(_CREATIVE_PROMPTS, count)
-
-    @overload
-    def analysis_prompt(self) -> str: ...
-    @overload
-    def analysis_prompt(self, count: Literal[1]) -> str: ...
-    @overload
-    def analysis_prompt(self, count: int) -> str | list[str]: ...
-    def analysis_prompt(self, count: int = 1) -> str | list[str]:
-        """Generate a data analysis prompt."""
-        if count == 1:
-            return self._engine.choice(_ANALYSIS_PROMPTS)
-        return self._engine.choices(_ANALYSIS_PROMPTS, count)
-
-    @overload
-    def system_prompt(self) -> str: ...
-    @overload
-    def system_prompt(self, count: Literal[1]) -> str: ...
-    @overload
-    def system_prompt(self, count: int) -> str | list[str]: ...
-    def system_prompt(self, count: int = 1) -> str | list[str]:
-        """Generate a system prompt for configuring an AI assistant."""
-        if count == 1:
-            return self._engine.choice(_SYSTEM_PROMPTS)
-        return self._engine.choices(_SYSTEM_PROMPTS, count)
-
-    # --- Computed string methods ---
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "user_prompt": _USER_PROMPTS,
+        "coding_prompt": _CODING_PROMPTS,
+        "creative_prompt": _CREATIVE_PROMPTS,
+        "analysis_prompt": _ANALYSIS_PROMPTS,
+        "system_prompt": _SYSTEM_PROMPTS,
+    }
 
     def _one_persona_prompt(self) -> str:
         role = self._engine.choice(_PERSONA_ROLES)
         trait = self._engine.choice(_PERSONA_TRAITS)
         return f"You are an {role} {trait}."
-
-    @overload
-    def persona_prompt(self) -> str: ...
-    @overload
-    def persona_prompt(self, count: Literal[1]) -> str: ...
-    @overload
-    def persona_prompt(self, count: int) -> str | list[str]: ...
-    def persona_prompt(self, count: int = 1) -> str | list[str]:
-        """Generate a persona-based system prompt."""
-        if count == 1:
-            return self._one_persona_prompt()
-        # Inlined batch with local binding
-        _choice = self._engine.choice
-        _roles = _PERSONA_ROLES
-        _traits = _PERSONA_TRAITS
-        return [
-            f"You are an {_choice(_roles)} {_choice(_traits)}." for _ in range(count)
-        ]
 
     def _one_prompt_template(self) -> str:
         action = self._engine.choice(_TEMPLATE_ACTIONS)
@@ -382,25 +264,6 @@ class AiPromptProvider(BaseProvider):
         fmt = self._engine.choice(_TEMPLATE_FORMATS)
         _topic = self._engine.choice(_TEMPLATE_TOPICS)
         return f"{action} a {{tone}} {fmt} about {{topic}} for {{audience}}"
-
-    @overload
-    def prompt_template(self) -> str: ...
-    @overload
-    def prompt_template(self, count: Literal[1]) -> str: ...
-    @overload
-    def prompt_template(self, count: int) -> str | list[str]: ...
-    def prompt_template(self, count: int = 1) -> str | list[str]:
-        """Generate a parameterized prompt template with placeholders."""
-        if count == 1:
-            return self._one_prompt_template()
-        # Inlined batch with local binding
-        _choice = self._engine.choice
-        _actions = _TEMPLATE_ACTIONS
-        _formats = _TEMPLATE_FORMATS
-        return [
-            f"{_choice(_actions)} a {{tone}} {_choice(_formats)} about {{topic}} for {{audience}}"
-            for _ in range(count)
-        ]
 
     def _one_few_shot_prompt(self) -> str:
         task = self._engine.choice(_FEW_SHOT_TASKS)
@@ -416,32 +279,20 @@ class AiPromptProvider(BaseProvider):
             f'Now classify:\nInput: "{{input}}"\nOutput:'
         )
 
-    @overload
-    def few_shot_prompt(self) -> str: ...
-    @overload
-    def few_shot_prompt(self, count: Literal[1]) -> str: ...
-    @overload
-    def few_shot_prompt(self, count: int) -> str | list[str]: ...
+    def persona_prompt(self, count: int = 1) -> str | list[str]:
+        """Generate a persona-based system prompt."""
+        if count == 1:
+            return self._one_persona_prompt()
+        return [self._one_persona_prompt() for _ in range(count)]
+
+    def prompt_template(self, count: int = 1) -> str | list[str]:
+        """Generate a parameterized prompt template with placeholders."""
+        if count == 1:
+            return self._one_prompt_template()
+        return [self._one_prompt_template() for _ in range(count)]
+
     def few_shot_prompt(self, count: int = 1) -> str | list[str]:
         """Generate a few-shot prompt with example pairs."""
         if count == 1:
             return self._one_few_shot_prompt()
-        # Inlined batch with local binding
-        _choice = self._engine.choice
-        _tasks = _FEW_SHOT_TASKS
-        _examples = _FEW_SHOT_EXAMPLES
-        _labels = _FEW_SHOT_LABELS
-        result: list[str] = []
-        for _ in range(count):
-            task = _choice(_tasks)
-            ex1 = _choice(_examples)
-            lb1 = _choice(_labels)
-            ex2 = _choice(_examples)
-            lb2 = _choice(_labels)
-            result.append(
-                f"{task}.\n\n"
-                f'Example 1:\nInput: "{ex1}"\nOutput: {lb1}\n\n'
-                f'Example 2:\nInput: "{ex2}"\nOutput: {lb2}\n\n'
-                f'Now classify:\nInput: "{{input}}"\nOutput:'
-            )
-        return result
+        return [self._one_few_shot_prompt() for _ in range(count)]

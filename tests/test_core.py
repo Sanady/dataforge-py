@@ -4,8 +4,6 @@ from dataforge import DataForge
 
 
 class TestDataForgeInit:
-    """Tests for DataForge initialization."""
-
     def test_default_locale(self) -> None:
         forge = DataForge()
         assert forge.locale == "en_US"
@@ -34,8 +32,6 @@ class TestDataForgeInit:
 
 
 class TestDataForgeSeed:
-    """Tests for seed reproducibility."""
-
     def test_seeded_person_reproducible(self) -> None:
         forge1 = DataForge(seed=99)
         forge2 = DataForge(seed=99)
@@ -55,8 +51,6 @@ class TestDataForgeSeed:
 
 
 class TestDataForgeLazyLoading:
-    """Tests for lazy provider loading."""
-
     def test_person_not_loaded_initially(self) -> None:
         forge = DataForge()
         assert "person" not in forge._providers  # noqa: SLF001

@@ -6,8 +6,6 @@ from dataforge import DataForge
 
 
 class TestCryptoScalar:
-    """Tests for single-item crypto hash generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -47,8 +45,6 @@ class TestCryptoScalar:
 
 
 class TestCryptoBatch:
-    """Tests for batch crypto hash generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -71,7 +67,6 @@ class TestCryptoBatch:
         assert all(re.match(r"^[0-9a-f]{64}$", h) for h in result)
 
     def test_batch_uniqueness(self) -> None:
-        """Batch of 1000 hashes should have high uniqueness."""
         result = self.forge.crypto.sha256(count=1000)
         unique = set(result)
         # With 256-bit hashes, collisions are astronomically unlikely

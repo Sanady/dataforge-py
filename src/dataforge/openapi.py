@@ -1,34 +1,4 @@
-"""OpenAPI / JSON Schema import — generate fake data from API specs.
-
-Parses OpenAPI 3.x and JSON Schema documents, resolves ``$ref``
-references, maps types and formats to DataForge providers, and
-creates Schema objects that generate conforming data.
-
-Usage::
-
-    from dataforge import DataForge
-    from dataforge.openapi import OpenAPIParser
-
-    forge = DataForge(seed=42)
-    parser = OpenAPIParser(forge)
-
-    # From an OpenAPI spec file
-    schemas = parser.from_file("openapi.yaml")
-
-    # Generate data for a specific schema
-    rows = schemas["User"].generate(count=100)
-
-    # From a JSON Schema
-    schema = parser.from_json_schema({
-        "type": "object",
-        "properties": {
-            "name": {"type": "string"},
-            "email": {"type": "string", "format": "email"},
-            "age": {"type": "integer", "minimum": 18, "maximum": 99},
-        }
-    })
-    rows = schema.generate(count=50)
-"""
+"""OpenAPI / JSON Schema import — generate fake data from API specs."""
 
 from __future__ import annotations
 
@@ -37,12 +7,7 @@ from typing import Any, TYPE_CHECKING
 if TYPE_CHECKING:
     from dataforge.core import DataForge
 
-# ------------------------------------------------------------------
-# Type mapping: (JSON Schema type, format) → DataForge field
-# ------------------------------------------------------------------
-
 _TYPE_FORMAT_MAP: dict[tuple[str, str | None], str] = {
-    # String formats
     ("string", "email"): "email",
     ("string", "uri"): "url",
     ("string", "url"): "url",
@@ -57,20 +22,16 @@ _TYPE_FORMAT_MAP: dict[tuple[str, str | None], str] = {
     ("string", "password"): "crypto.sha256",
     ("string", "byte"): "misc.uuid4",
     ("string", "binary"): "misc.uuid4",
-    # String without format → contextual
-    ("string", None): None,  # resolved by property name
-    # Numbers
+    ("string", None): None,
     ("integer", None): None,
     ("integer", "int32"): None,
     ("integer", "int64"): None,
     ("number", None): None,
     ("number", "float"): None,
     ("number", "double"): None,
-    # Boolean
     ("boolean", None): "boolean",
 }
 
-# Property name → DataForge field (for unformatted strings/integers)
 _PROPERTY_NAME_MAP: dict[str, str] = {
     "name": "full_name",
     "first_name": "first_name",
@@ -98,13 +59,7 @@ _PROPERTY_NAME_MAP: dict[str, str] = {
 
 
 class OpenAPIParser:
-    """Parse OpenAPI and JSON Schema documents into DataForge Schemas.
-
-    Parameters
-    ----------
-    forge : DataForge
-        The DataForge instance for creating schemas.
-    """
+    """Parse OpenAPI and JSON Schema documents into DataForge Schemas."""
 
     __slots__ = ("_forge", "_ref_cache")
 
@@ -113,18 +68,7 @@ class OpenAPIParser:
         self._ref_cache: dict[str, Any] = {}
 
     def from_file(self, path: str) -> dict[str, Any]:
-        """Parse an OpenAPI spec file and return schemas.
-
-        Parameters
-        ----------
-        path : str
-            Path to the OpenAPI spec (JSON or YAML).
-
-        Returns
-        -------
-        dict[str, Schema]
-            Mapping of schema name → Schema object.
-        """
+        """Parse an OpenAPI spec file and return schemas."""
         from dataforge.schema_io import _detect_format
 
         fmt = _detect_format(path)
@@ -146,21 +90,10 @@ class OpenAPIParser:
         return self.from_openapi(doc)
 
     def from_openapi(self, doc: dict[str, Any]) -> dict[str, Any]:
-        """Parse an OpenAPI document dict.
-
-        Parameters
-        ----------
-        doc : dict
-            The parsed OpenAPI document.
-
-        Returns
-        -------
-        dict[str, Schema]
-        """
-        self._ref_cache = doc  # store full doc for $ref resolution
+        """Parse an OpenAPI document dict."""
+        self._ref_cache = doc
         schemas: dict[str, Any] = {}
 
-        # OpenAPI 3.x: components.schemas
         components = doc.get("components", {})
         schema_defs = components.get("schemas", {})
 
@@ -171,7 +104,7 @@ class OpenAPIParser:
                     schema = self._build_schema(resolved, name)
                     schemas[name] = schema
                 except (ValueError, KeyError):
-                    pass  # Skip schemas we can't map
+                    pass
 
         return schemas
 
@@ -180,19 +113,7 @@ class OpenAPIParser:
         schema_def: dict[str, Any],
         name: str = "root",
     ) -> Any:
-        """Create a Schema from a JSON Schema definition.
-
-        Parameters
-        ----------
-        schema_def : dict
-            JSON Schema object definition.
-        name : str
-            Schema name for error messages.
-
-        Returns
-        -------
-        Schema
-        """
+        """Create a Schema from a JSON Schema definition."""
         resolved = self._resolve_refs(schema_def)
         return self._build_schema(resolved, name)
 
@@ -209,7 +130,7 @@ class OpenAPIParser:
     def _resolve_ref(self, ref: str) -> Any:
         """Resolve a single $ref path like '#/components/schemas/User'."""
         if not ref.startswith("#/"):
-            return {}  # External refs not supported
+            return {}
         parts = ref[2:].split("/")
         obj: Any = self._ref_cache
         for part in parts:
@@ -254,62 +175,47 @@ class OpenAPIParser:
         schema_type = prop_def.get("type", "string")
         schema_format = prop_def.get("format")
 
-        # Handle enum
         if "enum" in prop_def:
-            # For enums, we'll use a lambda with the enum values
-            # For simplicity, return None and handle in the caller
-            return None  # TODO: enum support via lambda
+            return None
 
-        # Handle arrays
         if schema_type == "array":
-            return None  # Skip arrays for now
+            return None
 
-        # Handle nested objects
         if schema_type == "object":
-            return None  # Skip nested objects for now
+            return None
 
-        # Check type+format mapping
         key = (schema_type, schema_format)
         mapped = _TYPE_FORMAT_MAP.get(key)
         if mapped is not None:
             return mapped
 
-        # Check without format
         key_nofmt = (schema_type, None)
         mapped = _TYPE_FORMAT_MAP.get(key_nofmt)
         if mapped is not None:
             return mapped
 
-        # Property name heuristic
         name_lower = prop_name.lower().replace("-", "_")
         name_mapped = _PROPERTY_NAME_MAP.get(name_lower)
         if name_mapped:
             return name_mapped
 
-        # Try to resolve via registry
         try:
             self._forge._resolve_field(prop_name)
             return prop_name
         except ValueError:
             pass
 
-        # Numeric type fallback with range
         if schema_type in ("integer", "number"):
             minimum = prop_def.get("minimum")
             maximum = prop_def.get("maximum")
             if minimum is not None or maximum is not None:
-                # Use a lambda for range-constrained numbers
-                return None  # TODO: range constraint support
+                return None
             return None
 
-        # Fallback for strings
         if schema_type == "string":
-            # Check minLength/maxLength, pattern
             pattern = prop_def.get("pattern")
             if pattern:
-                return None  # TODO: regexify support
-
-            # Generic string fallback
+                return None
             return "lorem.word"
 
         return None

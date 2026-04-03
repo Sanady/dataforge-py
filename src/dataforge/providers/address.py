@@ -1,7 +1,6 @@
 """Address provider — generates fake addresses."""
 
 from types import ModuleType
-from typing import Literal, overload
 
 from dataforge.backend import RandomEngine
 from dataforge.providers.base import BaseProvider
@@ -38,26 +37,6 @@ _COUNTRY_NAMES: tuple[str, ...] = (
     "South Africa",
     "Argentina",
     "Colombia",
-    "Chile",
-    "Turkey",
-    "Thailand",
-    "Indonesia",
-    "Malaysia",
-    "Singapore",
-    "Philippines",
-    "Vietnam",
-    "Egypt",
-    "Nigeria",
-    "Saudi Arabia",
-    "UAE",
-    "Israel",
-    "Czech Republic",
-    "Romania",
-    "Hungary",
-    "Greece",
-    "Ukraine",
-    "Peru",
-    "Pakistan",
 )
 
 _COUNTRY_CODES: tuple[str, ...] = (
@@ -91,26 +70,6 @@ _COUNTRY_CODES: tuple[str, ...] = (
     "ZA",
     "AR",
     "CO",
-    "CL",
-    "TR",
-    "TH",
-    "ID",
-    "MY",
-    "SG",
-    "PH",
-    "VN",
-    "EG",
-    "NG",
-    "SA",
-    "AE",
-    "IL",
-    "CZ",
-    "RO",
-    "HU",
-    "GR",
-    "UA",
-    "PE",
-    "PK",
 )
 
 
@@ -152,6 +111,11 @@ class AddressProvider(BaseProvider):
         "coordinate": "coordinate",
     }
 
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "country": _COUNTRY_NAMES,
+        "country_code": _COUNTRY_CODES,
+    }
+
     def __init__(self, engine: RandomEngine, locale_data: ModuleType) -> None:
         super().__init__(engine)
         self._street_names: tuple[str, ...] = locale_data.street_names
@@ -163,9 +127,7 @@ class AddressProvider(BaseProvider):
             locale_data.building_number_formats
         )
 
-    # ------------------------------------------------------------------
     # Scalar helpers (always return a single str)
-    # ------------------------------------------------------------------
 
     def _one_building_number(self) -> str:
         fmt = self._engine.choice(self._building_number_formats)
@@ -188,136 +150,48 @@ class AddressProvider(BaseProvider):
         zip_code = self._one_zip_code()
         return f"{building} {street}, {city}, {state} {zip_code}"
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
-    @overload
-    def building_number(self) -> str: ...
-    @overload
-    def building_number(self, count: Literal[1]) -> str: ...
-    @overload
-    def building_number(self, count: int) -> str | list[str]: ...
     def building_number(self, count: int = 1) -> str | list[str]:
-        """Generate a random building number.
-
-        Parameters
-        ----------
-        count : int
-            Number of building numbers to generate.
-        """
+        """Generate a random building number."""
         if count == 1:
             return self._one_building_number()
         return [self._one_building_number() for _ in range(count)]
 
-    @overload
-    def street_name(self) -> str: ...
-    @overload
-    def street_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def street_name(self, count: int) -> str | list[str]: ...
     def street_name(self, count: int = 1) -> str | list[str]:
-        """Generate a random street name (e.g. ``"Oak Ave"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of street names to generate.
-        """
+        """Generate a random street name."""
         if count == 1:
             return self._one_street()
         return [self._one_street() for _ in range(count)]
 
-    @overload
-    def street_address(self) -> str: ...
-    @overload
-    def street_address(self, count: Literal[1]) -> str: ...
-    @overload
-    def street_address(self, count: int) -> str | list[str]: ...
     def street_address(self, count: int = 1) -> str | list[str]:
-        """Generate a random street address (e.g. ``"4821 Oak Ave"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of street addresses to generate.
-        """
+        """Generate a random street address."""
         if count == 1:
             return f"{self._one_building_number()} {self._one_street()}"
         return [
             f"{self._one_building_number()} {self._one_street()}" for _ in range(count)
         ]
 
-    @overload
-    def city(self) -> str: ...
-    @overload
-    def city(self, count: Literal[1]) -> str: ...
-    @overload
-    def city(self, count: int) -> str | list[str]: ...
     def city(self, count: int = 1) -> str | list[str]:
-        """Generate a random city name.
-
-        Parameters
-        ----------
-        count : int
-            Number of city names to generate.
-        """
+        """Generate a random city name."""
         if count == 1:
             return self._engine.choice(self._cities)
         return self._engine.choices(self._cities, count)
 
-    @overload
-    def state(self) -> str: ...
-    @overload
-    def state(self, count: Literal[1]) -> str: ...
-    @overload
-    def state(self, count: int) -> str | list[str]: ...
     def state(self, count: int = 1) -> str | list[str]:
-        """Generate a random US state abbreviation.
-
-        Parameters
-        ----------
-        count : int
-            Number of state abbreviations to generate.
-        """
+        """Generate a random US state abbreviation."""
         if count == 1:
             return self._engine.choice(self._states)
         return self._engine.choices(self._states, count)
 
-    @overload
-    def zip_code(self) -> str: ...
-    @overload
-    def zip_code(self, count: Literal[1]) -> str: ...
-    @overload
-    def zip_code(self, count: int) -> str | list[str]: ...
     def zip_code(self, count: int = 1) -> str | list[str]:
-        """Generate a random zip code (e.g. ``"90210"`` or ``"90210-1234"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of zip codes to generate.
-        """
+        """Generate a random zip code."""
         if count == 1:
             return self._one_zip_code()
         return [self._one_zip_code() for _ in range(count)]
 
-    @overload
-    def full_address(self) -> str: ...
-    @overload
-    def full_address(self, count: Literal[1]) -> str: ...
-    @overload
-    def full_address(self, count: int) -> str | list[str]: ...
     def full_address(self, count: int = 1) -> str | list[str]:
-        """Generate a complete fake address.
-
-        Example: ``"4821 Oak Ave, Chicago, IL 60614"``
-
-        Parameters
-        ----------
-        count : int
-            Number of full addresses to generate.
-        """
+        """Generate a complete fake address."""
         if count == 1:
             return self._one_full_address()
         # Vectorized batch: bulk choices() for cities/states (2 calls
@@ -341,85 +215,15 @@ class AddressProvider(BaseProvider):
             result.append(f"{bldg} {street}, {cities[i]}, {states[i]} {zipcode}")
         return result
 
-    @overload
-    def country(self) -> str: ...
-    @overload
-    def country(self, count: Literal[1]) -> str: ...
-    @overload
-    def country(self, count: int) -> str | list[str]: ...
-    def country(self, count: int = 1) -> str | list[str]:
-        """Generate a random country name (e.g. ``"Germany"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of country names to generate.
-        """
-        if count == 1:
-            return self._engine.choice(_COUNTRY_NAMES)
-        return self._engine.choices(_COUNTRY_NAMES, count)
-
-    @overload
-    def country_code(self) -> str: ...
-    @overload
-    def country_code(self, count: Literal[1]) -> str: ...
-    @overload
-    def country_code(self, count: int) -> str | list[str]: ...
-    def country_code(self, count: int = 1) -> str | list[str]:
-        """Generate a random ISO 3166-1 alpha-2 country code (e.g. ``"DE"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of country codes to generate.
-        """
-        if count == 1:
-            return self._engine.choice(_COUNTRY_CODES)
-        return self._engine.choices(_COUNTRY_CODES, count)
-
-    @overload
-    def latitude(self) -> str: ...
-    @overload
-    def latitude(self, count: Literal[1]) -> str: ...
-    @overload
-    def latitude(self, count: int) -> str | list[str]: ...
     def latitude(self, count: int = 1) -> str | list[str]:
-        """Generate a random latitude (``-90.0`` to ``90.0``).
-
-        Parameters
-        ----------
-        count : int
-            Number of latitudes to generate.
-
-        Returns
-        -------
-        str or list[str]
-            Latitude as a decimal string with 6 decimal places.
-        """
+        """Generate a random latitude (-90.0 to 90.0)."""
         ri = self._engine.random_int
         if count == 1:
             return f"{ri(-90_000_000, 90_000_000) / 1_000_000:.6f}"
         return [f"{ri(-90_000_000, 90_000_000) / 1_000_000:.6f}" for _ in range(count)]
 
-    @overload
-    def longitude(self) -> str: ...
-    @overload
-    def longitude(self, count: Literal[1]) -> str: ...
-    @overload
-    def longitude(self, count: int) -> str | list[str]: ...
     def longitude(self, count: int = 1) -> str | list[str]:
-        """Generate a random longitude (``-180.0`` to ``180.0``).
-
-        Parameters
-        ----------
-        count : int
-            Number of longitudes to generate.
-
-        Returns
-        -------
-        str or list[str]
-            Longitude as a decimal string with 6 decimal places.
-        """
+        """Generate a random longitude (-180.0 to 180.0)."""
         ri = self._engine.random_int
         if count == 1:
             return f"{ri(-180_000_000, 180_000_000) / 1_000_000:.6f}"
@@ -427,24 +231,8 @@ class AddressProvider(BaseProvider):
             f"{ri(-180_000_000, 180_000_000) / 1_000_000:.6f}" for _ in range(count)
         ]
 
-    @overload
-    def coordinate(self) -> tuple[str, str]: ...
-    @overload
-    def coordinate(self, count: Literal[1]) -> tuple[str, str]: ...
-    @overload
-    def coordinate(self, count: int) -> tuple[str, str] | list[tuple[str, str]]: ...
     def coordinate(self, count: int = 1) -> tuple[str, str] | list[tuple[str, str]]:
-        """Generate a random (latitude, longitude) pair.
-
-        Parameters
-        ----------
-        count : int
-            Number of coordinate pairs to generate.
-
-        Returns
-        -------
-        tuple[str, str] or list[tuple[str, str]]
-        """
+        """Generate a random (latitude, longitude) pair."""
         ri = self._engine.random_int
         if count == 1:
             return (

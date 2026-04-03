@@ -41,16 +41,6 @@ street_names: tuple[str, ...] = (
     "Miró",
     "Zurbarán",
     "Murillo",
-    "Olivo",
-    "Naranjo",
-    "Almendro",
-    "Pino",
-    "Encina",
-    "Roble",
-    "Sauce",
-    "Palmera",
-    "Ciprés",
-    "Higuera",
 )
 
 street_suffixes: tuple[str, ...] = (

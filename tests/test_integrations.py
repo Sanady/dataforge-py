@@ -52,9 +52,7 @@ except ModuleNotFoundError:
     _has_sqlalchemy = False
 
 
-# ---------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------
 
 
 @pytest.fixture
@@ -62,15 +60,11 @@ def forge() -> DataForge:
     return DataForge(locale="en_US", seed=42)
 
 
-# ---------------------------------------------------------------
 # to_arrow
-# ---------------------------------------------------------------
 
 
 @pytest.mark.skipif(not _has_pyarrow, reason="pyarrow not installed")
 class TestToArrow:
-    """Tests for Schema.to_arrow() and DataForge.to_arrow()."""
-
     def test_basic_arrow_table(self, forge: DataForge) -> None:
         s = forge.schema(["first_name", "email", "city"])
         table = s.to_arrow(count=100)
@@ -85,7 +79,6 @@ class TestToArrow:
         assert len(table.column("first_name")) == 1
 
     def test_arrow_large_count_batched(self, forge: DataForge) -> None:
-        """Multi-batch path should produce correct total."""
         s = forge.schema(["first_name", "email"])
         table = s.to_arrow(count=5000, batch_size=1000)
         assert table.num_rows == 5000
@@ -119,27 +112,21 @@ class TestToArrow:
             assert u == n.upper()
 
     def test_arrow_small_count(self, forge: DataForge) -> None:
-        """Small counts should work fine in single-shot path."""
         s = forge.schema(["first_name"])
         table = s.to_arrow(count=2)
         assert table.num_rows == 2
 
     def test_delegation_to_arrow(self, forge: DataForge) -> None:
-        """DataForge.to_arrow() should delegate to Schema.to_arrow()."""
         table = forge.to_arrow(["first_name", "email"], count=20)
         assert table.num_rows == 20
         assert table.column_names == ["first_name", "email"]
 
 
-# ---------------------------------------------------------------
 # to_polars
-# ---------------------------------------------------------------
 
 
 @pytest.mark.skipif(not _has_polars, reason="polars not installed")
 class TestToPolars:
-    """Tests for Schema.to_polars() and DataForge.to_polars()."""
-
     def test_basic_polars_df(self, forge: DataForge) -> None:
         s = forge.schema(["first_name", "email", "city"])
         df = s.to_polars(count=100)
@@ -188,9 +175,7 @@ class TestToPolars:
         assert df.columns == ["first_name", "email"]
 
 
-# ---------------------------------------------------------------
 # schema_from_pydantic
-# ---------------------------------------------------------------
 
 
 @pytest.mark.skipif(
@@ -198,8 +183,6 @@ class TestToPolars:
     reason="pydantic not installed or incompatible with this Python version",
 )
 class TestSchemaFromPydantic:
-    """Tests for DataForge.schema_from_pydantic()."""
-
     def test_basic_pydantic_mapping(self, forge: DataForge) -> None:
         from pydantic import BaseModel
 
@@ -217,7 +200,6 @@ class TestSchemaFromPydantic:
             assert "city" in row
 
     def test_alias_mapping(self, forge: DataForge) -> None:
-        """Fields like 'phone' should map to 'phone_number'."""
         from pydantic import BaseModel
 
         class Contact(BaseModel):
@@ -277,7 +259,6 @@ class TestSchemaFromPydantic:
         assert rows1 == rows2
 
     def test_pydantic_many_aliases(self, forge: DataForge) -> None:
-        """Test several heuristic aliases work."""
         from pydantic import BaseModel
 
         class Profile(BaseModel):
@@ -298,15 +279,11 @@ class TestSchemaFromPydantic:
             assert "uuid" in row
 
 
-# ---------------------------------------------------------------
 # schema_from_sqlalchemy
-# ---------------------------------------------------------------
 
 
 @pytest.mark.skipif(not _has_sqlalchemy, reason="sqlalchemy not installed")
 class TestSchemaFromSQLAlchemy:
-    """Tests for DataForge.schema_from_sqlalchemy()."""
-
     def _make_base(self):
         from sqlalchemy.orm import DeclarativeBase
 

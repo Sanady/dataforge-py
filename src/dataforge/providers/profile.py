@@ -9,7 +9,7 @@ compatibility.  The compound ``profile()`` method returns a ``dict``
 and is available only via direct API use.
 """
 
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING
 
 from dataforge.backend import RandomEngine
 from dataforge.providers.base import BaseProvider
@@ -19,19 +19,7 @@ if TYPE_CHECKING:
 
 
 class ProfileProvider(BaseProvider):
-    """Generates coherent fake user profiles.
-
-    Unlike other providers, ``ProfileProvider`` needs a reference to
-    the parent :class:`DataForge` instance so it can delegate to
-    ``person``, ``internet``, ``address``, and ``phone`` providers.
-
-    Parameters
-    ----------
-    engine : RandomEngine
-        The shared random engine instance.
-    forge : DataForge
-        The parent DataForge instance for cross-provider access.
-    """
+    """Generates coherent fake user profiles."""
 
     __slots__ = ("_forge",)
 
@@ -53,195 +41,44 @@ class ProfileProvider(BaseProvider):
         super().__init__(engine)
         self._forge = forge
 
-    # ------------------------------------------------------------------
     # Individual field methods (for _field_map / Schema compatibility)
-    # These delegate to sub-providers — values are independent per call.
-    # For coherent profiles, use profile() instead.
-    # ------------------------------------------------------------------
 
-    @overload
-    def profile_first_name(self) -> str: ...
-    @overload
-    def profile_first_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def profile_first_name(self, count: int) -> str | list[str]: ...
     def profile_first_name(self, count: int = 1) -> str | list[str]:
-        """Generate a first name (delegates to PersonProvider).
-
-        Parameters
-        ----------
-        count : int
-            Number of names to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a first name (delegates to PersonProvider)."""
         return self._forge.person.first_name(count)
 
-    @overload
-    def profile_last_name(self) -> str: ...
-    @overload
-    def profile_last_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def profile_last_name(self, count: int) -> str | list[str]: ...
     def profile_last_name(self, count: int = 1) -> str | list[str]:
-        """Generate a last name (delegates to PersonProvider).
-
-        Parameters
-        ----------
-        count : int
-            Number of names to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a last name (delegates to PersonProvider)."""
         return self._forge.person.last_name(count)
 
-    @overload
-    def profile_email(self) -> str: ...
-    @overload
-    def profile_email(self, count: Literal[1]) -> str: ...
-    @overload
-    def profile_email(self, count: int) -> str | list[str]: ...
     def profile_email(self, count: int = 1) -> str | list[str]:
-        """Generate an email address (delegates to InternetProvider).
-
-        Parameters
-        ----------
-        count : int
-            Number of emails to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate an email address (delegates to InternetProvider)."""
         return self._forge.internet.email(count)
 
-    @overload
-    def profile_phone(self) -> str: ...
-    @overload
-    def profile_phone(self, count: Literal[1]) -> str: ...
-    @overload
-    def profile_phone(self, count: int) -> str | list[str]: ...
     def profile_phone(self, count: int = 1) -> str | list[str]:
-        """Generate a phone number (delegates to PhoneProvider).
-
-        Parameters
-        ----------
-        count : int
-            Number of phone numbers to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a phone number (delegates to PhoneProvider)."""
         return self._forge.phone.phone_number(count)
 
-    @overload
-    def profile_city(self) -> str: ...
-    @overload
-    def profile_city(self, count: Literal[1]) -> str: ...
-    @overload
-    def profile_city(self, count: int) -> str | list[str]: ...
     def profile_city(self, count: int = 1) -> str | list[str]:
-        """Generate a city name (delegates to AddressProvider).
-
-        Parameters
-        ----------
-        count : int
-            Number of cities to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a city name (delegates to AddressProvider)."""
         return self._forge.address.city(count)
 
-    @overload
-    def profile_state(self) -> str: ...
-    @overload
-    def profile_state(self, count: Literal[1]) -> str: ...
-    @overload
-    def profile_state(self, count: int) -> str | list[str]: ...
     def profile_state(self, count: int = 1) -> str | list[str]:
-        """Generate a state name (delegates to AddressProvider).
-
-        Parameters
-        ----------
-        count : int
-            Number of states to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a state name (delegates to AddressProvider)."""
         return self._forge.address.state(count)
 
-    @overload
-    def profile_zip_code(self) -> str: ...
-    @overload
-    def profile_zip_code(self, count: Literal[1]) -> str: ...
-    @overload
-    def profile_zip_code(self, count: int) -> str | list[str]: ...
     def profile_zip_code(self, count: int = 1) -> str | list[str]:
-        """Generate a zip code (delegates to AddressProvider).
-
-        Parameters
-        ----------
-        count : int
-            Number of zip codes to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a zip code (delegates to AddressProvider)."""
         return self._forge.address.zip_code(count)
 
-    @overload
-    def profile_job_title(self) -> str: ...
-    @overload
-    def profile_job_title(self, count: Literal[1]) -> str: ...
-    @overload
-    def profile_job_title(self, count: int) -> str | list[str]: ...
     def profile_job_title(self, count: int = 1) -> str | list[str]:
-        """Generate a job title (delegates to CompanyProvider).
-
-        Parameters
-        ----------
-        count : int
-            Number of job titles to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a job title (delegates to CompanyProvider)."""
         return self._forge.company.job_title(count)
 
-    # ------------------------------------------------------------------
     # Compound profile method (direct API only, not in _field_map)
-    # ------------------------------------------------------------------
 
     def profile(self, count: int = 1) -> dict[str, str] | list[dict[str, str]]:
-        """Generate a coherent user profile.
-
-        Each profile is a ``dict`` with keys: ``first_name``,
-        ``last_name``, ``email``, ``phone``, ``city``, ``state``,
-        ``zip_code``, ``job_title``.
-
-        The ``email`` is derived from the same first/last name for
-        coherence within each profile.
-
-        Parameters
-        ----------
-        count : int
-            Number of profiles to generate.
-
-        Returns
-        -------
-        dict[str, str] or list[dict[str, str]]
-        """
+        """Generate a coherent user profile dict."""
 
         def _one_profile() -> dict[str, str]:
             first = self._forge.person.first_name()

@@ -13,9 +13,7 @@ from collections import Counter
 from dataforge import DataForge
 
 
-# ------------------------------------------------------------------ #
 #  Weighted blood type distribution
-# ------------------------------------------------------------------ #
 
 
 class TestRealisticBloodType:
@@ -41,7 +39,6 @@ class TestRealisticBloodType:
         assert isinstance(result, str)
 
     def test_distribution_weighted(self) -> None:
-        """O+ and A+ should dominate; AB- should be very rare."""
         results = self.forge.medical.realistic_blood_type(count=10_000)
         counts = Counter(results)
         # O+ (~37.4%) and A+ (~35.7%) together should be >50% of total
@@ -52,7 +49,6 @@ class TestRealisticBloodType:
         assert rare < 300, f"AB- = {rare}, expected <300"
 
     def test_schema_field_resolution(self) -> None:
-        """realistic_blood_type should be usable in Schema via field map."""
         rows = self.forge.to_dict(
             fields=["realistic_blood_type"],
             count=10,
@@ -70,9 +66,7 @@ class TestRealisticBloodType:
         assert r1 == r2
 
 
-# ------------------------------------------------------------------ #
 #  Weighted engine methods
-# ------------------------------------------------------------------ #
 
 
 class TestWeightedEngine:
@@ -103,9 +97,7 @@ class TestWeightedEngine:
         assert heavy_count > 900, f"heavy={heavy_count}, expected >900"
 
 
-# ------------------------------------------------------------------ #
 #  Lambda / callable fields in Schema
-# ------------------------------------------------------------------ #
 
 
 class TestSchemaLambdaFields:
@@ -113,7 +105,6 @@ class TestSchemaLambdaFields:
         self.forge = DataForge(locale="en_US", seed=42)
 
     def test_lambda_basic(self) -> None:
-        """Lambda can transform a previously generated column."""
         schema = self.forge.schema(
             {
                 "name": "first_name",
@@ -126,7 +117,6 @@ class TestSchemaLambdaFields:
             assert row["upper_name"] == row["name"].upper()
 
     def test_lambda_multiple(self) -> None:
-        """Multiple lambdas can reference each other in order."""
         schema = self.forge.schema(
             {
                 "first": "first_name",
@@ -145,7 +135,6 @@ class TestSchemaLambdaFields:
             assert row["email_like"] == expected_email
 
     def test_lambda_count_one(self) -> None:
-        """count=1 should still work with lambdas."""
         schema = self.forge.schema(
             {
                 "city": "city",
@@ -157,7 +146,6 @@ class TestSchemaLambdaFields:
         assert rows[0]["label"] == f"City: {rows[0]['city']}"
 
     def test_lambda_stream(self) -> None:
-        """Lambdas should work via stream() as well."""
         schema = self.forge.schema(
             {
                 "name": "first_name",
@@ -170,7 +158,6 @@ class TestSchemaLambdaFields:
             assert row["upper"] == row["name"].upper()
 
     def test_lambda_generate_empty(self) -> None:
-        """count=0 should return empty list even with lambdas."""
         schema = self.forge.schema(
             {
                 "name": "first_name",
@@ -180,7 +167,6 @@ class TestSchemaLambdaFields:
         assert schema.generate(count=0) == []
 
     def test_lambda_no_lambdas_unchanged(self) -> None:
-        """Schemas without lambdas should behave identically to before."""
         s1 = self.forge.schema(["first_name", "email"])
         f2 = DataForge(locale="en_US", seed=42)
         s2 = f2.schema({"first_name": "first_name", "email": "email"})
@@ -189,7 +175,6 @@ class TestSchemaLambdaFields:
         assert rows1 == rows2
 
     def test_lambda_to_csv(self) -> None:
-        """Lambdas should work in to_csv()."""
         schema = self.forge.schema(
             {
                 "name": "first_name",
@@ -202,7 +187,6 @@ class TestSchemaLambdaFields:
         assert lines[0].strip() == "name,upper"
 
     def test_lambda_to_jsonl(self) -> None:
-        """Lambdas should work in to_jsonl()."""
         import json
 
         schema = self.forge.schema(
@@ -218,7 +202,6 @@ class TestSchemaLambdaFields:
             assert row["upper"] == row["name"].upper()
 
     def test_lambda_stream_to_csv(self) -> None:
-        """Lambdas should work in stream_to_csv()."""
         schema = self.forge.schema(
             {
                 "name": "first_name",
@@ -237,7 +220,6 @@ class TestSchemaLambdaFields:
             os.unlink(path)
 
     def test_lambda_stream_to_jsonl(self) -> None:
-        """Lambdas should work in stream_to_jsonl()."""
         import json
 
         schema = self.forge.schema(
@@ -259,7 +241,6 @@ class TestSchemaLambdaFields:
             os.unlink(path)
 
     def test_lambda_non_string_return(self) -> None:
-        """Lambda returning non-string preserves native type."""
         schema = self.forge.schema(
             {
                 "name": "first_name",
@@ -272,7 +253,6 @@ class TestSchemaLambdaFields:
             assert isinstance(row["name_len"], int)
 
     def test_lambda_repr(self) -> None:
-        """Schema repr should list all columns including lambda ones."""
         schema = self.forge.schema(
             {
                 "name": "first_name",

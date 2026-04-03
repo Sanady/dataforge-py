@@ -10,9 +10,7 @@ from __future__ import annotations
 import pytest
 
 
-# ------------------------------------------------------------------
 # Helper
-# ------------------------------------------------------------------
 
 
 def _has_textual() -> bool:
@@ -25,9 +23,7 @@ def _has_textual() -> bool:
         return False
 
 
-# ------------------------------------------------------------------
 # Import guards
-# ------------------------------------------------------------------
 
 
 class TestTUIImports:
@@ -36,7 +32,6 @@ class TestTUIImports:
         reason="textual not installed",
     )
     def test_launch_function_importable(self) -> None:
-        """The launch() function should be importable from tui package."""
         from dataforge.tui import launch
 
         assert callable(launch)
@@ -46,7 +41,6 @@ class TestTUIImports:
         reason="textual not installed",
     )
     def test_app_class_importable(self) -> None:
-        """DataForgeTUI class should be importable when textual is available."""
         from dataforge.tui.app import DataForgeTUI
 
         assert DataForgeTUI is not None
@@ -61,9 +55,7 @@ class TestTUIImports:
         assert ExportDialog is not None
 
 
-# ------------------------------------------------------------------
 # App construction (only if textual is installed)
-# ------------------------------------------------------------------
 
 
 @pytest.mark.skipif(not _has_textual(), reason="textual not installed")
@@ -95,9 +87,7 @@ class TestDataForgeTUIConstruction:
         assert app._forge is None
 
 
-# ------------------------------------------------------------------
 # Export dialog (only if textual is installed)
-# ------------------------------------------------------------------
 
 
 @pytest.mark.skipif(not _has_textual(), reason="textual not installed")

@@ -1,7 +1,5 @@
 """Science provider — elements, units, formulas, planets, etc."""
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
 _CHEMICAL_ELEMENTS: tuple[str, ...] = (
@@ -35,26 +33,6 @@ _CHEMICAL_ELEMENTS: tuple[str, ...] = (
     "Nickel",
     "Copper",
     "Zinc",
-    "Gallium",
-    "Germanium",
-    "Arsenic",
-    "Selenium",
-    "Bromine",
-    "Krypton",
-    "Rubidium",
-    "Strontium",
-    "Yttrium",
-    "Zirconium",
-    "Niobium",
-    "Molybdenum",
-    "Technetium",
-    "Ruthenium",
-    "Rhodium",
-    "Palladium",
-    "Silver",
-    "Gold",
-    "Platinum",
-    "Iridium",
 )
 
 _ELEMENT_SYMBOLS: tuple[str, ...] = (
@@ -88,26 +66,6 @@ _ELEMENT_SYMBOLS: tuple[str, ...] = (
     "Ni",
     "Cu",
     "Zn",
-    "Ga",
-    "Ge",
-    "As",
-    "Se",
-    "Br",
-    "Kr",
-    "Rb",
-    "Sr",
-    "Y",
-    "Zr",
-    "Nb",
-    "Mo",
-    "Tc",
-    "Ru",
-    "Rh",
-    "Pd",
-    "Ag",
-    "Au",
-    "Pt",
-    "Ir",
 )
 
 _SI_UNITS: tuple[str, ...] = (
@@ -183,16 +141,6 @@ _CONSTELLATIONS: tuple[str, ...] = (
     "Cancer",
     "Capricornus",
     "Libra",
-    "Pisces",
-    "Virgo",
-    "Cygnus",
-    "Lyra",
-    "Pegasus",
-    "Perseus",
-    "Draco",
-    "Centaurus",
-    "Canis Major",
-    "Canis Minor",
 )
 
 _SCIENTIFIC_DISCIPLINES: tuple[str, ...] = (
@@ -211,16 +159,6 @@ _SCIENTIFIC_DISCIPLINES: tuple[str, ...] = (
     "Electrodynamics",
     "Organic Chemistry",
     "Inorganic Chemistry",
-    "Molecular Biology",
-    "Astrophysics",
-    "Cosmology",
-    "Paleontology",
-    "Oceanography",
-    "Meteorology",
-    "Seismology",
-    "Virology",
-    "Immunology",
-    "Epidemiology",
 )
 
 _METRIC_PREFIXES: tuple[str, ...] = (
@@ -266,100 +204,13 @@ class ScienceProvider(BaseProvider):
         "metric_prefix": "metric_prefix",
     }
 
-    # --- Public API ---
-
-    @overload
-    def chemical_element(self) -> str: ...
-    @overload
-    def chemical_element(self, count: Literal[1]) -> str: ...
-    @overload
-    def chemical_element(self, count: int) -> str | list[str]: ...
-    def chemical_element(self, count: int = 1) -> str | list[str]:
-        """Generate a chemical element name (e.g., Hydrogen, Carbon)."""
-        if count == 1:
-            return self._engine.choice(_CHEMICAL_ELEMENTS)
-        return self._engine.choices(_CHEMICAL_ELEMENTS, count)
-
-    @overload
-    def element_symbol(self) -> str: ...
-    @overload
-    def element_symbol(self, count: Literal[1]) -> str: ...
-    @overload
-    def element_symbol(self, count: int) -> str | list[str]: ...
-    def element_symbol(self, count: int = 1) -> str | list[str]:
-        """Generate a chemical element symbol (e.g., H, C, Fe)."""
-        if count == 1:
-            return self._engine.choice(_ELEMENT_SYMBOLS)
-        return self._engine.choices(_ELEMENT_SYMBOLS, count)
-
-    @overload
-    def si_unit(self) -> str: ...
-    @overload
-    def si_unit(self, count: Literal[1]) -> str: ...
-    @overload
-    def si_unit(self, count: int) -> str | list[str]: ...
-    def si_unit(self, count: int = 1) -> str | list[str]:
-        """Generate an SI unit (e.g., meter (m), joule (J))."""
-        if count == 1:
-            return self._engine.choice(_SI_UNITS)
-        return self._engine.choices(_SI_UNITS, count)
-
-    @overload
-    def planet(self) -> str: ...
-    @overload
-    def planet(self, count: Literal[1]) -> str: ...
-    @overload
-    def planet(self, count: int) -> str | list[str]: ...
-    def planet(self, count: int = 1) -> str | list[str]:
-        """Generate a planet name from our solar system."""
-        if count == 1:
-            return self._engine.choice(_PLANETS)
-        return self._engine.choices(_PLANETS, count)
-
-    @overload
-    def galaxy(self) -> str: ...
-    @overload
-    def galaxy(self, count: Literal[1]) -> str: ...
-    @overload
-    def galaxy(self, count: int) -> str | list[str]: ...
-    def galaxy(self, count: int = 1) -> str | list[str]:
-        """Generate a galaxy name (e.g., Milky Way, Andromeda)."""
-        if count == 1:
-            return self._engine.choice(_GALAXIES)
-        return self._engine.choices(_GALAXIES, count)
-
-    @overload
-    def constellation(self) -> str: ...
-    @overload
-    def constellation(self, count: Literal[1]) -> str: ...
-    @overload
-    def constellation(self, count: int) -> str | list[str]: ...
-    def constellation(self, count: int = 1) -> str | list[str]:
-        """Generate a constellation name (e.g., Orion, Leo)."""
-        if count == 1:
-            return self._engine.choice(_CONSTELLATIONS)
-        return self._engine.choices(_CONSTELLATIONS, count)
-
-    @overload
-    def scientific_discipline(self) -> str: ...
-    @overload
-    def scientific_discipline(self, count: Literal[1]) -> str: ...
-    @overload
-    def scientific_discipline(self, count: int) -> str | list[str]: ...
-    def scientific_discipline(self, count: int = 1) -> str | list[str]:
-        """Generate a scientific discipline (e.g., Physics, Genetics)."""
-        if count == 1:
-            return self._engine.choice(_SCIENTIFIC_DISCIPLINES)
-        return self._engine.choices(_SCIENTIFIC_DISCIPLINES, count)
-
-    @overload
-    def metric_prefix(self) -> str: ...
-    @overload
-    def metric_prefix(self, count: Literal[1]) -> str: ...
-    @overload
-    def metric_prefix(self, count: int) -> str | list[str]: ...
-    def metric_prefix(self, count: int = 1) -> str | list[str]:
-        """Generate a metric prefix (e.g., kilo (k), nano (n))."""
-        if count == 1:
-            return self._engine.choice(_METRIC_PREFIXES)
-        return self._engine.choices(_METRIC_PREFIXES, count)
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "chemical_element": _CHEMICAL_ELEMENTS,
+        "element_symbol": _ELEMENT_SYMBOLS,
+        "si_unit": _SI_UNITS,
+        "planet": _PLANETS,
+        "galaxy": _GALAXIES,
+        "constellation": _CONSTELLATIONS,
+        "scientific_discipline": _SCIENTIFIC_DISCIPLINES,
+        "metric_prefix": _METRIC_PREFIXES,
+    }

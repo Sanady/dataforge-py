@@ -21,8 +21,6 @@ def schema(forge: DataForge):
 
 
 class TestStreamToCsv:
-    """Tests for Schema.stream_to_csv."""
-
     def test_writes_file(self, schema) -> None:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             path = f.name
@@ -50,7 +48,6 @@ class TestStreamToCsv:
             os.unlink(path)
 
     def test_batch_size(self, schema) -> None:
-        """Small batch size should still produce correct output."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             path = f.name
         try:
@@ -80,7 +77,6 @@ class TestStreamToCsv:
             os.unlink(path)
 
     def test_via_forge(self, forge: DataForge) -> None:
-        """Test convenience method on DataForge."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             path = f.name
         try:
@@ -91,8 +87,6 @@ class TestStreamToCsv:
 
 
 class TestStreamToJsonl:
-    """Tests for Schema.stream_to_jsonl."""
-
     def test_writes_file(self, schema) -> None:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
             path = f.name
@@ -142,8 +136,6 @@ class TestStreamToJsonl:
 
 
 class TestToParquet:
-    """Tests for Schema.to_parquet (requires pyarrow)."""
-
     @pytest.fixture(autouse=True)
     def _skip_no_pyarrow(self) -> None:
         pytest.importorskip("pyarrow")
@@ -202,7 +194,6 @@ class TestToParquet:
             os.unlink(path)
 
     def test_no_pyarrow_error(self, forge: DataForge, monkeypatch) -> None:
-        """Verify clear error when pyarrow is not installed."""
         import builtins
 
         real_import = builtins.__import__
@@ -219,8 +210,6 @@ class TestToParquet:
 
 
 class TestAsyncStream:
-    """Tests for Schema.async_stream."""
-
     @pytest.fixture
     def schema(self, forge: DataForge):
         return forge.schema(["first_name", "email", "city"])

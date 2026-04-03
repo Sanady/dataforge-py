@@ -4,8 +4,6 @@ from dataforge import DataForge
 
 
 class TestProfileScalar:
-    """Tests for single-item profile generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -33,7 +31,6 @@ class TestProfileScalar:
             assert isinstance(value, str), f"{key} is not str: {type(value)}"
 
     def test_profile_email_coherence(self) -> None:
-        """Email should contain first and last name."""
         result = self.forge.profile.profile()
         email = result["email"]
         first = result["first_name"].lower()
@@ -55,8 +52,6 @@ class TestProfileScalar:
 
 
 class TestProfileBatch:
-    """Tests for batch profile generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -86,8 +81,6 @@ class TestProfileBatch:
 
 
 class TestProfileFieldMap:
-    """Tests for individual _field_map methods (Schema compatibility)."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -132,13 +125,11 @@ class TestProfileFieldMap:
         assert len(result) > 0
 
     def test_field_map_batch(self) -> None:
-        """All _field_map methods should support batch mode."""
         result = self.forge.profile.profile_first_name(count=10)
         assert isinstance(result, list)
         assert len(result) == 10
 
     def test_schema_compatibility(self) -> None:
-        """ProfileProvider fields should work in Schema."""
         schema = self.forge.schema(
             {
                 "first_name": "profile_first_name",

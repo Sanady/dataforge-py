@@ -4,8 +4,6 @@ from dataforge import DataForge
 
 
 class TestPhoneScalar:
-    """Tests for single-item phone generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -27,8 +25,6 @@ class TestPhoneScalar:
 
 
 class TestPhoneBatch:
-    """Tests for batch phone generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -44,8 +40,6 @@ class TestPhoneBatch:
 
 
 class TestPhoneLocales:
-    """Tests for phone across locales."""
-
     def test_de_DE_phone(self) -> None:
         forge = DataForge(locale="de_DE", seed=42)
         phone = forge.phone.phone_number()

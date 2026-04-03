@@ -16,9 +16,7 @@ from dataforge.constraints import (
 )
 
 
-# ------------------------------------------------------------------
 # Fixtures
-# ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -26,16 +24,11 @@ def forge() -> DataForge:
     return DataForge(locale="en_US", seed=42)
 
 
-# ------------------------------------------------------------------
 # Unit tests for individual constraint classes
-# ------------------------------------------------------------------
 
 
 class TestDependsOnConstraint:
-    """Test geographic dependency constraint."""
-
     def test_state_depends_on_country(self, forge: DataForge) -> None:
-        """state depending on country should pick from that country's states."""
         from dataforge.data.correlations.geo import COUNTRY_STATES
 
         c = DependsOnConstraint("address.state", "state", "country")
@@ -64,7 +57,6 @@ class TestDependsOnConstraint:
         assert val == "JPY"
 
     def test_unknown_country_fallback(self, forge: DataForge) -> None:
-        """Unknown country should still produce a value (fallback provinces)."""
         c = DependsOnConstraint("address.state", "state", "country")
         row = {"country": "Atlantis"}
         val = c.generate(row, forge._engine, forge)
@@ -72,8 +64,6 @@ class TestDependsOnConstraint:
 
 
 class TestTemporalConstraint:
-    """Test temporal ordering constraint."""
-
     def test_after_reference(self, forge: DataForge) -> None:
         c = TemporalConstraint("date", "end_date", "after", "start_date", (1, 30))
         row = {"start_date": "2024-01-01"}
@@ -87,7 +77,6 @@ class TestTemporalConstraint:
         assert val < "2024-12-31"
 
     def test_none_reference_fallback(self, forge: DataForge) -> None:
-        """If reference is None, should still generate a value."""
         c = TemporalConstraint("date", "end_date", "after", "start_date", (1, 30))
         row = {"start_date": None}
         val = c.generate(row, forge._engine, forge)
@@ -95,8 +84,6 @@ class TestTemporalConstraint:
 
 
 class TestCorrelateConstraint:
-    """Test statistical correlation constraint."""
-
     def test_basic_correlation(self, forge: DataForge) -> None:
         c = CorrelateConstraint("value", "y", "x", correlation=0.9, mean=0.0, std=1.0)
         row = {"x": 2.0}
@@ -110,7 +97,6 @@ class TestCorrelateConstraint:
         assert isinstance(val, float)
 
     def test_correlation_bounded(self) -> None:
-        """Correlation should be clamped to [-1, 1]."""
         c = CorrelateConstraint("v", "y", "x", correlation=5.0)
         assert c.correlation == 1.0
         c2 = CorrelateConstraint("v", "y", "x", correlation=-5.0)
@@ -118,8 +104,6 @@ class TestCorrelateConstraint:
 
 
 class TestConditionalConstraint:
-    """Test conditional value pools."""
-
     def test_conditional_picks_from_pool(self, forge: DataForge) -> None:
         pools = {"M": ("Mr.",), "F": ("Ms.", "Mrs.")}
         c = ConditionalConstraint("title", "title", "gender", pools, ("Mx.",))
@@ -136,8 +120,6 @@ class TestConditionalConstraint:
 
 
 class TestRangeConstraint:
-    """Test numeric range constraint."""
-
     def test_static_range(self, forge: DataForge) -> None:
         c = RangeConstraint("price", "price", min_val=10.0, max_val=100.0, precision=2)
         row = {}
@@ -153,21 +135,16 @@ class TestRangeConstraint:
         assert val >= 50.0
 
     def test_inverted_bounds_swapped(self, forge: DataForge) -> None:
-        """If min > max, they should be swapped."""
         c = RangeConstraint("v", "v", min_val=100.0, max_val=10.0)
         row = {}
         val = c.generate(row, forge._engine, forge)
         assert 10.0 <= val <= 100.0
 
 
-# ------------------------------------------------------------------
 # parse_field_spec tests
-# ------------------------------------------------------------------
 
 
 class TestParseFieldSpec:
-    """Test parsing of dict-based field specs."""
-
     def test_depends_on_spec(self) -> None:
         spec = {"field": "address.city", "depends_on": "country"}
         constraint, deps = parse_field_spec("city", spec)
@@ -202,21 +179,16 @@ class TestParseFieldSpec:
         assert isinstance(constraint, RangeConstraint)
 
     def test_plain_field_spec(self) -> None:
-        """A dict with only 'field' should return no constraint."""
         spec = {"field": "email"}
         constraint, deps = parse_field_spec("email", spec)
         assert constraint is None
         assert deps == []
 
 
-# ------------------------------------------------------------------
 # build_dependency_order tests
-# ------------------------------------------------------------------
 
 
 class TestBuildDependencyOrder:
-    """Test DAG building and topological sort."""
-
     def test_simple_dag(self) -> None:
         specs = {
             "country": "country",
@@ -248,16 +220,11 @@ class TestBuildDependencyOrder:
             build_dependency_order(specs)
 
 
-# ------------------------------------------------------------------
 # Full Schema integration tests
-# ------------------------------------------------------------------
 
 
 class TestConstraintSchemaIntegration:
-    """Test constraint-based schemas end-to-end via forge.schema()."""
-
     def test_geographic_chain(self, forge: DataForge) -> None:
-        """country → state → city chain should produce consistent data."""
         from dataforge.data.correlations.geo import (
             COUNTRY_STATES,
             STATE_CITIES,
@@ -300,7 +267,6 @@ class TestConstraintSchemaIntegration:
             assert row["end_date"] > row["start_date"]
 
     def test_mixed_independent_and_dependent(self, forge: DataForge) -> None:
-        """Schema with both plain fields and constraints."""
         schema = forge.schema(
             {
                 "name": "first_name",

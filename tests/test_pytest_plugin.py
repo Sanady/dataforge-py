@@ -6,13 +6,10 @@ from dataforge import DataForge
 
 
 class TestForgeFixture:
-    """Tests for the ``forge`` fixture."""
-
     def test_fixture_is_dataforge(self, forge: DataForge) -> None:
         assert isinstance(forge, DataForge)
 
     def test_fixture_is_seeded(self, forge: DataForge) -> None:
-        """Seeded fixture should produce deterministic output."""
         a = forge.person.first_name()
         # Create another with same seed — should match
         # (conftest.py overrides plugin fixture with seed=42)
@@ -27,8 +24,6 @@ class TestForgeFixture:
 
 
 class TestFakeFixture:
-    """Tests for the ``fake`` alias fixture."""
-
     def test_fake_is_forge(self, forge: DataForge, fake: DataForge) -> None:
         assert fake is forge
 
@@ -38,8 +33,6 @@ class TestFakeFixture:
 
 
 class TestForgeUnseeded:
-    """Tests for the ``forge_unseeded`` fixture."""
-
     def test_unseeded_is_dataforge(self, forge_unseeded: DataForge) -> None:
         assert isinstance(forge_unseeded, DataForge)
 
@@ -49,11 +42,8 @@ class TestForgeUnseeded:
 
 
 class TestForgeSeedMarker:
-    """Tests for the ``@pytest.mark.forge_seed`` marker."""
-
     @pytest.mark.forge_seed(42)
     def test_marker_sets_seed(self, forge: DataForge) -> None:
-        """forge_seed(42) should produce same output as DataForge(seed=42)."""
         a = forge.person.first_name()
         forge2 = DataForge(seed=42)
         b = forge2.person.first_name()
@@ -61,7 +51,6 @@ class TestForgeSeedMarker:
 
     @pytest.mark.forge_seed(99)
     def test_different_seed_different_output(self, forge: DataForge) -> None:
-        """Different seed should (very likely) produce different output."""
         a = forge.person.first_name()
         forge2 = DataForge(seed=0)
         _b = forge2.person.first_name()

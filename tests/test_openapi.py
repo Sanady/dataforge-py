@@ -12,9 +12,7 @@ from dataforge import DataForge
 from dataforge.openapi import OpenAPIParser, _TYPE_FORMAT_MAP, _PROPERTY_NAME_MAP
 
 
-# ------------------------------------------------------------------
 # Fixtures
-# ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -27,9 +25,7 @@ def parser(forge: DataForge) -> OpenAPIParser:
     return OpenAPIParser(forge)
 
 
-# ------------------------------------------------------------------
 # Construction
-# ------------------------------------------------------------------
 
 
 class TestOpenAPIParserConstruction:
@@ -41,9 +37,7 @@ class TestOpenAPIParserConstruction:
             parser.nonexistent = True  # type: ignore[attr-defined]
 
 
-# ------------------------------------------------------------------
 # Type format map
-# ------------------------------------------------------------------
 
 
 class TestTypeFormatMap:
@@ -63,9 +57,7 @@ class TestTypeFormatMap:
         assert _TYPE_FORMAT_MAP[("string", "date-time")] == "datetime"
 
 
-# ------------------------------------------------------------------
 # Property name map
-# ------------------------------------------------------------------
 
 
 class TestPropertyNameMap:
@@ -79,9 +71,7 @@ class TestPropertyNameMap:
         assert _PROPERTY_NAME_MAP["city"] == "city"
 
 
-# ------------------------------------------------------------------
 # JSON Schema parsing
-# ------------------------------------------------------------------
 
 
 class TestFromJsonSchema:
@@ -130,7 +120,6 @@ class TestFromJsonSchema:
             assert isinstance(row["active"], bool)
 
     def test_property_name_heuristic(self, parser: OpenAPIParser) -> None:
-        """Property names like 'email', 'city' should be auto-mapped."""
         schema_def = {
             "type": "object",
             "properties": {
@@ -149,7 +138,6 @@ class TestFromJsonSchema:
             parser.from_json_schema(schema_def)
 
     def test_enum_skipped(self, parser: OpenAPIParser) -> None:
-        """Enum properties are currently skipped."""
         schema_def = {
             "type": "object",
             "properties": {
@@ -175,7 +163,6 @@ class TestFromJsonSchema:
         assert "name" in rows[0]
 
     def test_string_fallback_to_word(self, parser: OpenAPIParser) -> None:
-        """Unknown string property should fall back to lorem.word."""
         schema_def = {
             "type": "object",
             "properties": {
@@ -188,9 +175,7 @@ class TestFromJsonSchema:
         assert isinstance(rows[0]["xyzzy_field"], str)
 
 
-# ------------------------------------------------------------------
 # OpenAPI document parsing
-# ------------------------------------------------------------------
 
 
 class TestFromOpenAPI:
@@ -280,9 +265,7 @@ class TestFromOpenAPI:
         assert "User" in schemas
 
 
-# ------------------------------------------------------------------
 # File parsing
-# ------------------------------------------------------------------
 
 
 class TestFromFile:

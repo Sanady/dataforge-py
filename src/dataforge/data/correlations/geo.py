@@ -10,9 +10,7 @@ Data is stored as immutable tuples for minimal memory and maximum
 
 from __future__ import annotations
 
-# ------------------------------------------------------------------
 # Country → States mapping
-# ------------------------------------------------------------------
 
 COUNTRY_STATES: dict[str, tuple[str, ...]] = {
     "United States": (
@@ -171,9 +169,7 @@ COUNTRY_STATES: dict[str, tuple[str, ...]] = {
     ),
 }
 
-# ------------------------------------------------------------------
 # State → Cities mapping (representative cities per state)
-# ------------------------------------------------------------------
 
 STATE_CITIES: dict[str, tuple[str, ...]] = {
     # United States
@@ -256,9 +252,7 @@ STATE_CITIES: dict[str, tuple[str, ...]] = {
     "Jalisco": ("Guadalajara", "Zapopan", "Tlaquepaque"),
 }
 
-# ------------------------------------------------------------------
 # State → Zip code ranges (US-style prefix ranges)
-# ------------------------------------------------------------------
 
 STATE_ZIP_PREFIX: dict[str, tuple[str, ...]] = {
     "California": (
@@ -320,9 +314,7 @@ STATE_ZIP_PREFIX: dict[str, tuple[str, ...]] = {
     "Colorado": ("800", "801", "802", "803", "804", "805", "806", "808", "809", "810"),
 }
 
-# ------------------------------------------------------------------
 # Country → Phone format
-# ------------------------------------------------------------------
 
 COUNTRY_PHONE_FORMAT: dict[str, str] = {
     "United States": "+1-###-###-####",
@@ -337,9 +329,7 @@ COUNTRY_PHONE_FORMAT: dict[str, str] = {
     "Mexico": "+52-##-####-####",
 }
 
-# ------------------------------------------------------------------
 # Country → Currency
-# ------------------------------------------------------------------
 
 COUNTRY_CURRENCY: dict[str, str] = {
     "United States": "USD",

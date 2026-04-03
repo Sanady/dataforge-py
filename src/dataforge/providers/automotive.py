@@ -4,13 +4,9 @@ Includes license plates, VINs, vehicle makes, models, years, and colors.
 All data is stored as immutable ``tuple[str, ...]`` for cache friendliness.
 """
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
-# ------------------------------------------------------------------
 # Data tuples (immutable, module-level for zero per-call overhead)
-# ------------------------------------------------------------------
 
 _VEHICLE_MAKES: tuple[str, ...] = (
     "Toyota",
@@ -33,26 +29,6 @@ _VEHICLE_MAKES: tuple[str, ...] = (
     "GMC",
     "Dodge",
     "Buick",
-    "Cadillac",
-    "Lincoln",
-    "Acura",
-    "Infiniti",
-    "Volvo",
-    "Porsche",
-    "Land Rover",
-    "Jaguar",
-    "Mitsubishi",
-    "Chrysler",
-    "Fiat",
-    "Alfa Romeo",
-    "Genesis",
-    "Rivian",
-    "Lucid",
-    "Polestar",
-    "Mini",
-    "Maserati",
-    "Ferrari",
-    "Lamborghini",
 )
 
 _VEHICLE_MODELS: tuple[str, ...] = (
@@ -86,46 +62,6 @@ _VEHICLE_MODELS: tuple[str, ...] = (
     "F-Type",
     "Outlander",
     "Pacifica",
-    "500",
-    "Giulia",
-    "G70",
-    "R1T",
-    "Air",
-    "Polestar 2",
-    "Cooper",
-    "Ghibli",
-    "488",
-    "Urus",
-    "Corolla",
-    "Accord",
-    "Mustang",
-    "Malibu",
-    "X5",
-    "E-Class",
-    "Q7",
-    "Passat",
-    "Tucson",
-    "Sportage",
-    "Sentra",
-    "Forester",
-    "Mazda3",
-    "ES",
-    "Model Y",
-    "Grand Cherokee",
-    "2500",
-    "Yukon",
-    "Challenger",
-    "Enclave",
-    "CT5",
-    "Corsair",
-    "TLX",
-    "QX60",
-    "XC60",
-    "Cayenne",
-    "Defender",
-    "XE",
-    "Eclipse Cross",
-    "300",
 )
 
 _VEHICLE_COLORS: tuple[str, ...] = (
@@ -144,11 +80,6 @@ _VEHICLE_COLORS: tuple[str, ...] = (
     "Purple",
     "Burgundy",
     "Navy",
-    "Charcoal",
-    "Pearl White",
-    "Midnight Blue",
-    "Racing Red",
-    "Arctic Silver",
 )
 
 _PLATE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -218,9 +149,13 @@ class AutomotiveProvider(BaseProvider):
         "vehicle_color": "vehicle_color",
     }
 
-    # ------------------------------------------------------------------
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "vehicle_make": _VEHICLE_MAKES,
+        "vehicle_model": _VEHICLE_MODELS,
+        "vehicle_color": _VEHICLE_COLORS,
+    }
+
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_plate(self) -> str:
         """Generate a single US-style license plate (ABC-1234)."""
@@ -249,168 +184,30 @@ class AutomotiveProvider(BaseProvider):
         chars[8] = "X" if remainder == 10 else str(remainder)
         return "".join(chars)
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
-    @overload
-    def license_plate(self) -> str: ...
-    @overload
-    def license_plate(self, count: Literal[1]) -> str: ...
-    @overload
-    def license_plate(self, count: int) -> str | list[str]: ...
     def license_plate(self, count: int = 1) -> str | list[str]:
-        """Generate a US-style license plate (e.g. ``"ABC-1234"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of plates to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a US-style license plate (e.g. ``"ABC-1234"``)."""
         if count == 1:
             return self._one_plate()
         return [self._one_plate() for _ in range(count)]
 
-    @overload
-    def vin(self) -> str: ...
-    @overload
-    def vin(self, count: Literal[1]) -> str: ...
-    @overload
-    def vin(self, count: int) -> str | list[str]: ...
     def vin(self, count: int = 1) -> str | list[str]:
-        """Generate a 17-character Vehicle Identification Number.
-
-        The check digit (position 9) is computed correctly per the
-        ISO 3779 / FMVSS 115 algorithm.
-
-        Parameters
-        ----------
-        count : int
-            Number of VINs to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a 17-character Vehicle Identification Number."""
         if count == 1:
             return self._one_vin()
         return [self._one_vin() for _ in range(count)]
 
-    @overload
-    def vehicle_make(self) -> str: ...
-    @overload
-    def vehicle_make(self, count: Literal[1]) -> str: ...
-    @overload
-    def vehicle_make(self, count: int) -> str | list[str]: ...
-    def vehicle_make(self, count: int = 1) -> str | list[str]:
-        """Generate a vehicle manufacturer name (e.g. ``"Toyota"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of makes to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_VEHICLE_MAKES)
-        return self._engine.choices(_VEHICLE_MAKES, count)
-
-    @overload
-    def vehicle_model(self) -> str: ...
-    @overload
-    def vehicle_model(self, count: Literal[1]) -> str: ...
-    @overload
-    def vehicle_model(self, count: int) -> str | list[str]: ...
-    def vehicle_model(self, count: int = 1) -> str | list[str]:
-        """Generate a vehicle model name (e.g. ``"Camry"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of models to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_VEHICLE_MODELS)
-        return self._engine.choices(_VEHICLE_MODELS, count)
-
-    @overload
-    def vehicle_year(self) -> int: ...
-    @overload
-    def vehicle_year(self, count: Literal[1]) -> int: ...
-    @overload
-    def vehicle_year(self, count: int) -> int | list[int]: ...
     def vehicle_year(self, count: int = 1) -> int | list[int]:
-        """Generate a vehicle model year (1990–2026).
-
-        Parameters
-        ----------
-        count : int
-            Number of years to generate.
-
-        Returns
-        -------
-        int or list[int]
-        """
+        """Generate a vehicle model year (1990–2026)."""
         ri = self._engine.random_int
         if count == 1:
             return ri(1990, 2026)
         return [ri(1990, 2026) for _ in range(count)]
 
-    @overload
-    def vehicle_year_str(self) -> str: ...
-    @overload
-    def vehicle_year_str(self, count: Literal[1]) -> str: ...
-    @overload
-    def vehicle_year_str(self, count: int) -> str | list[str]: ...
     def vehicle_year_str(self, count: int = 1) -> str | list[str]:
-        """Generate a vehicle model year as a string (``"1990"``–``"2026"``).
-
-        This variant is used by the ``_field_map`` for Schema
-        compatibility (all Schema fields must produce strings).
-
-        Parameters
-        ----------
-        count : int
-            Number of years to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a vehicle model year as a string (``"1990"``–``"2026"``)."""
         ri = self._engine.random_int
         if count == 1:
             return str(ri(1990, 2026))
         return [str(ri(1990, 2026)) for _ in range(count)]
-
-    @overload
-    def vehicle_color(self) -> str: ...
-    @overload
-    def vehicle_color(self, count: Literal[1]) -> str: ...
-    @overload
-    def vehicle_color(self, count: int) -> str | list[str]: ...
-    def vehicle_color(self, count: int = 1) -> str | list[str]:
-        """Generate a vehicle color (e.g. ``"Midnight Blue"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of colors to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_VEHICLE_COLORS)
-        return self._engine.choices(_VEHICLE_COLORS, count)

@@ -13,9 +13,7 @@ from dataforge import DataForge
 sa = pytest.importorskip("sqlalchemy")
 
 
-# ------------------------------------------------------------------
 # Fixtures
-# ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -72,9 +70,7 @@ def seeder(forge, engine):
     return s
 
 
-# ------------------------------------------------------------------
 # Construction
-# ------------------------------------------------------------------
 
 
 class TestDatabaseSeederConstruction:
@@ -93,9 +89,7 @@ class TestDatabaseSeederConstruction:
         assert s._engine is None
 
 
-# ------------------------------------------------------------------
 # Table introspection
-# ------------------------------------------------------------------
 
 
 class TestTableIntrospection:
@@ -126,9 +120,7 @@ class TestTableIntrospection:
             seeder._introspect_table("nonexistent")
 
 
-# ------------------------------------------------------------------
 # Seed single table
-# ------------------------------------------------------------------
 
 
 class TestSeedTable:
@@ -150,7 +142,6 @@ class TestSeedTable:
         assert count == 10
 
     def test_seed_batched(self, seeder, engine) -> None:
-        """Verify batch_size works for larger inserts."""
         count = seeder.seed_table("users", count=250, batch_size=100)
         assert count == 250
 
@@ -159,7 +150,6 @@ class TestSeedTable:
             assert result.scalar() == 250
 
     def test_seed_empty_mapping_raises(self, seeder, engine) -> None:
-        """Table with no mappable columns should raise."""
         # The 'items' table has 'sku' which may be mapped via type fallback.
         # Verify by checking if introspection returns an empty map
         field_map = seeder._introspect_table("items")
@@ -172,9 +162,7 @@ class TestSeedTable:
             assert count == 10
 
 
-# ------------------------------------------------------------------
 # Dialect optimizations
-# ------------------------------------------------------------------
 
 
 class TestDialectOptimizations:

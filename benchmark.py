@@ -194,11 +194,11 @@ def benchmark_single(forge: DataForge, iterations: int = 10_000) -> None:
         ("llm.token_count()", forge.llm.token_count),
         ("llm.cost_estimate()", forge.llm.cost_estimate),
         ("llm.rate_limit_header()", forge.llm.rate_limit_header),
-        # AI Chat (compound)
-        ("ai_chat.chat_role()", forge.ai_chat.chat_role),
-        ("ai_chat.chat_model()", forge.ai_chat.chat_model),
-        ("ai_chat.chat_content()", forge.ai_chat.chat_content),
-        ("ai_chat.chat_tokens()", forge.ai_chat.chat_tokens),
+        # AI Chat (on LLM provider)
+        ("llm.chat_role()", forge.llm.chat_role),
+        ("llm.chat_model()", forge.llm.chat_model),
+        ("llm.chat_content()", forge.llm.chat_content),
+        ("llm.chat_tokens()", forge.llm.chat_tokens),
         # Social Media
         ("social_media.platform()", forge.social_media.platform),
         ("social_media.username()", forge.social_media.username),
@@ -384,11 +384,11 @@ def benchmark_batch(forge: DataForge) -> None:
         ("llm.token_count(count=N)", forge.llm.token_count),
         ("llm.cost_estimate(count=N)", forge.llm.cost_estimate),
         ("llm.rate_limit_header(count=N)", forge.llm.rate_limit_header),
-        # AI Chat (compound)
-        ("ai_chat.chat_role(count=N)", forge.ai_chat.chat_role),
-        ("ai_chat.chat_model(count=N)", forge.ai_chat.chat_model),
-        ("ai_chat.chat_content(count=N)", forge.ai_chat.chat_content),
-        ("ai_chat.chat_tokens(count=N)", forge.ai_chat.chat_tokens),
+        # AI Chat (on LLM provider)
+        ("llm.chat_role(count=N)", forge.llm.chat_role),
+        ("llm.chat_model(count=N)", forge.llm.chat_model),
+        ("llm.chat_content(count=N)", forge.llm.chat_content),
+        ("llm.chat_tokens(count=N)", forge.llm.chat_tokens),
         # Social Media
         ("social_media.platform(count=N)", forge.social_media.platform),
         ("social_media.username(count=N)", forge.social_media.username),

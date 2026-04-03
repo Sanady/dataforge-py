@@ -41,16 +41,6 @@ street_names: tuple[str, ...] = (
     "Ranta",
     "Ratina",
     "Ruusu",
-    "Saarni",
-    "Satama",
-    "Savon",
-    "Sipoon",
-    "Suvanto",
-    "Tammi",
-    "Tehtaan",
-    "Toivo",
-    "Tuomi",
-    "Vaahtera",
 )
 
 street_suffixes: tuple[str, ...] = (

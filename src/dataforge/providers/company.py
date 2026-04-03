@@ -1,7 +1,6 @@
 """Company provider — generates fake company names, catch phrases, job titles."""
 
 from types import ModuleType
-from typing import Literal, overload
 
 from dataforge.backend import RandomEngine
 from dataforge.providers.base import BaseProvider
@@ -47,9 +46,7 @@ class CompanyProvider(BaseProvider):
         self._catch_phrase_nouns: tuple[str, ...] = locale_data.catch_phrase_nouns
         self._job_titles: tuple[str, ...] = locale_data.job_titles
 
-    # ------------------------------------------------------------------
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_company_name(self) -> str:
         name = self._engine.choice(self._company_names)
@@ -61,24 +58,10 @@ class CompanyProvider(BaseProvider):
         noun = self._engine.choice(self._catch_phrase_nouns)
         return f"{adj} {noun}"
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
-    @overload
-    def company_name(self) -> str: ...
-    @overload
-    def company_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def company_name(self, count: int) -> str | list[str]: ...
     def company_name(self, count: int = 1) -> str | list[str]:
-        """Generate a random company name (e.g. ``"Acme Inc"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of company names to generate.
-        """
+        """Generate a random company name."""
         if count == 1:
             return self._one_company_name()
         # Vectorized: 2 bulk choices() + zip (avoids N scalar calls)
@@ -86,38 +69,14 @@ class CompanyProvider(BaseProvider):
         suffixes = self._engine.choices(self._company_suffixes, count)
         return [f"{n} {s}" for n, s in zip(names, suffixes)]
 
-    @overload
-    def company_suffix(self) -> str: ...
-    @overload
-    def company_suffix(self, count: Literal[1]) -> str: ...
-    @overload
-    def company_suffix(self, count: int) -> str | list[str]: ...
     def company_suffix(self, count: int = 1) -> str | list[str]:
-        """Generate a random company suffix (e.g. ``"LLC"``, ``"GmbH"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of suffixes to generate.
-        """
+        """Generate a random company suffix."""
         if count == 1:
             return self._engine.choice(self._company_suffixes)
         return self._engine.choices(self._company_suffixes, count)
 
-    @overload
-    def catch_phrase(self) -> str: ...
-    @overload
-    def catch_phrase(self, count: Literal[1]) -> str: ...
-    @overload
-    def catch_phrase(self, count: int) -> str | list[str]: ...
     def catch_phrase(self, count: int = 1) -> str | list[str]:
-        """Generate a random catch phrase (e.g. ``"Innovative framework"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of catch phrases to generate.
-        """
+        """Generate a random catch phrase."""
         if count == 1:
             return self._one_catch_phrase()
         # Vectorized: 2 bulk choices() + zip (avoids N scalar calls)
@@ -125,20 +84,8 @@ class CompanyProvider(BaseProvider):
         nouns = self._engine.choices(self._catch_phrase_nouns, count)
         return [f"{a} {n}" for a, n in zip(adjs, nouns)]
 
-    @overload
-    def job_title(self) -> str: ...
-    @overload
-    def job_title(self, count: Literal[1]) -> str: ...
-    @overload
-    def job_title(self, count: int) -> str | list[str]: ...
     def job_title(self, count: int = 1) -> str | list[str]:
-        """Generate a random job title.
-
-        Parameters
-        ----------
-        count : int
-            Number of job titles to generate.
-        """
+        """Generate a random job title."""
         if count == 1:
             return self._engine.choice(self._job_titles)
         return self._engine.choices(self._job_titles, count)

@@ -34,9 +34,7 @@ except ModuleNotFoundError:
     )
 
 
-# ------------------------------------------------------------------
 # Export dialog
-# ------------------------------------------------------------------
 
 
 class ExportDialog(ModalScreen[dict[str, Any] | None]):
@@ -118,9 +116,7 @@ class ExportDialog(ModalScreen[dict[str, Any] | None]):
         self.dismiss(None)
 
 
-# ------------------------------------------------------------------
 # Main TUI application
-# ------------------------------------------------------------------
 
 
 class DataForgeTUI(App):

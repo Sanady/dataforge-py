@@ -1,7 +1,5 @@
 """File provider — generates fake file names, extensions, MIME types, paths."""
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
 _FILE_EXTENSIONS: tuple[tuple[str, str, str], ...] = (
@@ -80,26 +78,6 @@ _FILE_WORDS: tuple[str, ...] = (
     "test",
     "sample",
     "example",
-    "demo",
-    "project",
-    "image",
-    "photo",
-    "video",
-    "audio",
-    "music",
-    "export",
-    "import",
-    "invoice",
-    "receipt",
-    "budget",
-    "plan",
-    "schedule",
-    "index",
-    "main",
-    "app",
-    "module",
-    "utils",
-    "core",
 )
 
 _DIR_PARTS: tuple[str, ...] = (
@@ -118,11 +96,6 @@ _DIR_PARTS: tuple[str, ...] = (
     "etc",
     "config",
     "logs",
-    "backup",
-    "media",
-    "images",
-    "videos",
-    "music",
 )
 
 
@@ -157,9 +130,11 @@ class FileProvider(BaseProvider):
         "file_category": "file_category",
     }
 
-    # ------------------------------------------------------------------
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "file_category": _FILE_CATEGORIES,
+    }
+
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_ext_record(self) -> tuple[str, str, str]:
         return self._engine.choice(_FILE_EXTENSIONS)
@@ -175,97 +150,34 @@ class FileProvider(BaseProvider):
         name = self._one_file_name()
         return "/" + "/".join(parts) + "/" + name
 
-    # ------------------------------------------------------------------
+    def _one_file_extension(self) -> str:
+        return self._one_ext_record()[0]
+
+    def _one_mime_type(self) -> str:
+        return self._one_ext_record()[1]
+
     # Public API
-    # ------------------------------------------------------------------
 
-    @overload
-    def file_name(self) -> str: ...
-    @overload
-    def file_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def file_name(self, count: int) -> str | list[str]: ...
     def file_name(self, count: int = 1) -> str | list[str]:
-        """Generate a random file name (e.g. ``"report.pdf"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of file names to generate.
-        """
+        """Generate a random file name (e.g. ``"report.pdf"``)."""
         if count == 1:
             return self._one_file_name()
         return [self._one_file_name() for _ in range(count)]
 
-    @overload
-    def file_extension(self) -> str: ...
-    @overload
-    def file_extension(self, count: Literal[1]) -> str: ...
-    @overload
-    def file_extension(self, count: int) -> str | list[str]: ...
     def file_extension(self, count: int = 1) -> str | list[str]:
-        """Generate a random file extension (e.g. ``"pdf"``, ``"jpg"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of extensions to generate.
-        """
+        """Generate a random file extension (e.g. ``"pdf"``, ``"jpg"``)."""
         if count == 1:
-            return self._one_ext_record()[0]
-        return [self._one_ext_record()[0] for _ in range(count)]
+            return self._one_file_extension()
+        return [self._one_file_extension() for _ in range(count)]
 
-    @overload
-    def mime_type(self) -> str: ...
-    @overload
-    def mime_type(self, count: Literal[1]) -> str: ...
-    @overload
-    def mime_type(self, count: int) -> str | list[str]: ...
     def mime_type(self, count: int = 1) -> str | list[str]:
-        """Generate a random MIME type (e.g. ``"application/pdf"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of MIME types to generate.
-        """
+        """Generate a random MIME type (e.g. ``"application/pdf"``)."""
         if count == 1:
-            return self._one_ext_record()[1]
-        return [self._one_ext_record()[1] for _ in range(count)]
+            return self._one_mime_type()
+        return [self._one_mime_type() for _ in range(count)]
 
-    @overload
-    def file_path(self) -> str: ...
-    @overload
-    def file_path(self, count: Literal[1]) -> str: ...
-    @overload
-    def file_path(self, count: int) -> str | list[str]: ...
     def file_path(self, count: int = 1) -> str | list[str]:
-        """Generate a random Unix file path (e.g. ``"/home/user/report.pdf"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of file paths to generate.
-        """
+        """Generate a random Unix file path (e.g. ``"/home/user/report.pdf"``)."""
         if count == 1:
             return self._one_file_path()
         return [self._one_file_path() for _ in range(count)]
-
-    @overload
-    def file_category(self) -> str: ...
-    @overload
-    def file_category(self, count: Literal[1]) -> str: ...
-    @overload
-    def file_category(self, count: int) -> str | list[str]: ...
-    def file_category(self, count: int = 1) -> str | list[str]:
-        """Generate a random file category (e.g. ``"image"``, ``"document"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of categories to generate.
-        """
-        categories = _FILE_CATEGORIES
-        if count == 1:
-            return self._engine.choice(categories)
-        return self._engine.choices(categories, count)

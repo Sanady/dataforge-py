@@ -1,14 +1,15 @@
-"""LLM provider — model metadata, agents, RAG, moderation, usage/billing."""
+"""LLM provider — model metadata, agents, RAG, moderation, usage/billing, chat."""
 
-from typing import Literal, overload
+from typing import TYPE_CHECKING
 
+from dataforge.backend import RandomEngine
 from dataforge.providers.base import BaseProvider
 
-# ---------------------------------------------------------------------------
-# Module-level immutable tuples — zero per-call allocation
-# ---------------------------------------------------------------------------
+if TYPE_CHECKING:
+    from dataforge.core import DataForge
 
-# --- LLM metadata ---
+# Module-level immutable tuples — zero per-call allocation
+
 
 _MODEL_NAMES: tuple[str, ...] = (
     "gpt-4o",
@@ -31,16 +32,6 @@ _MODEL_NAMES: tuple[str, ...] = (
     "mistral-medium",
     "mistral-small",
     "mixtral-8x22b",
-    "mixtral-8x7b",
-    "command-r-plus",
-    "command-r",
-    "deepseek-v3",
-    "deepseek-r1",
-    "qwen-2.5-72b",
-    "phi-4",
-    "yi-large",
-    "dbrx-instruct",
-    "jamba-1.5-large",
 )
 
 _PROVIDER_NAMES: tuple[str, ...] = (
@@ -59,11 +50,6 @@ _PROVIDER_NAMES: tuple[str, ...] = (
     "Azure OpenAI",
     "Hugging Face",
     "Replicate",
-    "Together AI",
-    "Groq",
-    "Fireworks AI",
-    "Perplexity",
-    "Anyscale",
 )
 
 _FINISH_REASONS: tuple[str, ...] = (
@@ -104,7 +90,6 @@ _API_KEY_PREFIXES: tuple[str, ...] = (
     "co-",
 )
 
-# --- AI Agent / Tool use ---
 
 _TOOL_NAMES: tuple[str, ...] = (
     "web_search",
@@ -122,11 +107,6 @@ _TOOL_NAMES: tuple[str, ...] = (
     "weather_lookup",
     "stock_price",
     "url_fetcher",
-    "json_validator",
-    "csv_parser",
-    "pdf_extractor",
-    "screenshot_tool",
-    "clipboard_manager",
 )
 
 _AGENT_NAMES: tuple[str, ...] = (
@@ -145,11 +125,6 @@ _AGENT_NAMES: tuple[str, ...] = (
     "DocumentAgent",
     "SchedulerBot",
     "SecurityScanner",
-    "PerformanceAgent",
-    "MigrationHelper",
-    "ComplianceChecker",
-    "IncidentResponder",
-    "OnboardingBot",
 )
 
 _MCP_SERVER_NAMES: tuple[str, ...] = (
@@ -168,11 +143,6 @@ _MCP_SERVER_NAMES: tuple[str, ...] = (
     "jira",
     "confluence",
     "aws",
-    "kubernetes",
-    "docker",
-    "redis",
-    "elasticsearch",
-    "mongodb",
 )
 
 _CAPABILITIES: tuple[str, ...] = (
@@ -191,14 +161,8 @@ _CAPABILITIES: tuple[str, ...] = (
     "text-to-speech",
     "retrieval-augmented-generation",
     "multi-turn-conversation",
-    "json-mode",
-    "system-prompts",
-    "parallel-tool-calls",
-    "citation-generation",
-    "web-browsing",
 )
 
-# --- RAG / Embeddings ---
 
 _EMBEDDING_MODELS: tuple[str, ...] = (
     "text-embedding-3-small",
@@ -216,11 +180,6 @@ _EMBEDDING_MODELS: tuple[str, ...] = (
     "e5-large-v2",
     "jina-embeddings-v3",
     "mxbai-embed-large-v1",
-    "all-MiniLM-L6-v2",
-    "instructor-xl",
-    "cohere-embed-english-v3",
-    "titan-embed-text-v2",
-    "gecko-embedding",
 )
 
 _VECTOR_DB_NAMES: tuple[str, ...] = (
@@ -239,11 +198,6 @@ _VECTOR_DB_NAMES: tuple[str, ...] = (
     "MongoDB Atlas Vector",
     "Azure AI Search",
     "Google Vertex AI",
-    "OpenSearch",
-    "Turbopuffer",
-    "Marqo",
-    "Deep Lake",
-    "Vald",
 )
 
 _NAMESPACES: tuple[str, ...] = (
@@ -264,7 +218,6 @@ _NAMESPACES: tuple[str, ...] = (
     "customer-data",
 )
 
-# --- Content moderation ---
 
 _MODERATION_CATEGORIES: tuple[str, ...] = (
     "hate",
@@ -295,7 +248,6 @@ _HARM_LABELS: tuple[str, ...] = (
     "filtered",
 )
 
-# --- Usage / Billing ---
 
 _RATE_LIMIT_NAMES: tuple[str, ...] = (
     "x-ratelimit-limit-requests",
@@ -312,14 +264,18 @@ _RATE_LIMIT_NAMES: tuple[str, ...] = (
 _HEX_CHARS: str = "0123456789abcdef"
 _ALPHANUM: str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
+_CHAT_ROLE_VALUES: tuple[str, ...] = ("user", "assistant", "system", "tool")
+_CHAT_ROLE_WEIGHTS: tuple[int, ...] = (40, 40, 15, 5)
+
 
 class LlmProvider(BaseProvider):
-    """Generates fake LLM ecosystem data — models, agents, RAG, moderation, billing."""
+    """Generates fake LLM ecosystem data — models, agents, RAG, moderation, billing, chat."""
 
-    __slots__ = ()
+    __slots__ = ("_forge",)
 
     _provider_name = "llm"
     _locale_modules: tuple[str, ...] = ()
+    _needs_forge: bool = True
     _field_map: dict[str, str] = {
         # LLM metadata
         "model_name": "model_name",
@@ -350,35 +306,35 @@ class LlmProvider(BaseProvider):
         "completion_tokens": "completion_tokens",
         "cost_estimate": "cost_estimate",
         "rate_limit_header": "rate_limit_header",
+        # AI Chat fields
+        "chat_role": "chat_role",
+        "chat_model": "chat_model",
+        "chat_content": "chat_content",
+        "chat_tokens": "chat_tokens",
+        "chat_finish_reason": "chat_finish_reason",
     }
 
-    # ===================================================================
-    # LLM metadata
-    # ===================================================================
+    def __init__(self, engine: RandomEngine, forge: "DataForge") -> None:
+        super().__init__(engine)
+        self._forge = forge
 
-    @overload
-    def model_name(self) -> str: ...
-    @overload
-    def model_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def model_name(self, count: int) -> str | list[str]: ...
-    def model_name(self, count: int = 1) -> str | list[str]:
-        """Generate an LLM model name (e.g. gpt-4o, claude-3.5-sonnet)."""
-        if count == 1:
-            return self._engine.choice(_MODEL_NAMES)
-        return self._engine.choices(_MODEL_NAMES, count)
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "model_name": _MODEL_NAMES,
+        "provider_name": _PROVIDER_NAMES,
+        "finish_reason": _FINISH_REASONS,
+        "stop_sequence": _STOP_SEQUENCES,
+        "tool_name": _TOOL_NAMES,
+        "mcp_server_name": _MCP_SERVER_NAMES,
+        "agent_name": _AGENT_NAMES,
+        "capability": _CAPABILITIES,
+        "embedding_model": _EMBEDDING_MODELS,
+        "vector_db_name": _VECTOR_DB_NAMES,
+        "namespace": _NAMESPACES,
+        "moderation_category": _MODERATION_CATEGORIES,
+        "harm_label": _HARM_LABELS,
+    }
 
-    @overload
-    def provider_name(self) -> str: ...
-    @overload
-    def provider_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def provider_name(self, count: int) -> str | list[str]: ...
-    def provider_name(self, count: int = 1) -> str | list[str]:
-        """Generate an LLM provider name (e.g. OpenAI, Anthropic)."""
-        if count == 1:
-            return self._engine.choice(_PROVIDER_NAMES)
-        return self._engine.choices(_PROVIDER_NAMES, count)
+    # Scalar helpers
 
     def _one_api_key(self) -> str:
         prefix = self._engine.choice(_API_KEY_PREFIXES)
@@ -388,68 +344,6 @@ class LlmProvider(BaseProvider):
         an_len = len(an)
         return prefix + "".join(an[_ri(0, an_len - 1)] for _ in range(40))
 
-    @overload
-    def api_key(self) -> str: ...
-    @overload
-    def api_key(self, count: Literal[1]) -> str: ...
-    @overload
-    def api_key(self, count: int) -> str | list[str]: ...
-    def api_key(self, count: int = 1) -> str | list[str]:
-        """Generate a realistic-looking API key."""
-        if count == 1:
-            return self._one_api_key()
-        # Inlined batch with local binding
-        _choice = self._engine.choice
-        _ri = self._engine.random_int
-        _prefixes = _API_KEY_PREFIXES
-        an = _ALPHANUM
-        an_len = len(an)
-        result: list[str] = []
-        for _ in range(count):
-            prefix = _choice(_prefixes)
-            result.append(prefix + "".join(an[_ri(0, an_len - 1)] for _j in range(40)))
-        return result
-
-    @overload
-    def finish_reason(self) -> str: ...
-    @overload
-    def finish_reason(self, count: Literal[1]) -> str: ...
-    @overload
-    def finish_reason(self, count: int) -> str | list[str]: ...
-    def finish_reason(self, count: int = 1) -> str | list[str]:
-        """Generate an LLM finish reason (e.g. stop, length, tool_calls)."""
-        if count == 1:
-            return self._engine.choice(_FINISH_REASONS)
-        return self._engine.choices(_FINISH_REASONS, count)
-
-    @overload
-    def stop_sequence(self) -> str: ...
-    @overload
-    def stop_sequence(self, count: Literal[1]) -> str: ...
-    @overload
-    def stop_sequence(self, count: int) -> str | list[str]: ...
-    def stop_sequence(self, count: int = 1) -> str | list[str]:
-        """Generate a stop sequence token."""
-        if count == 1:
-            return self._engine.choice(_STOP_SEQUENCES)
-        return self._engine.choices(_STOP_SEQUENCES, count)
-
-    # ===================================================================
-    # AI Agent / Tool use
-    # ===================================================================
-
-    @overload
-    def tool_name(self) -> str: ...
-    @overload
-    def tool_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def tool_name(self, count: int) -> str | list[str]: ...
-    def tool_name(self, count: int = 1) -> str | list[str]:
-        """Generate a tool/function name for AI agents."""
-        if count == 1:
-            return self._engine.choice(_TOOL_NAMES)
-        return self._engine.choices(_TOOL_NAMES, count)
-
     def _one_tool_call_id(self) -> str:
         # Format: call_XXXX... (24 alphanumeric chars) — matches OpenAI format
         _ri = self._engine.random_int
@@ -457,270 +351,145 @@ class LlmProvider(BaseProvider):
         an_len = len(an)
         return "call_" + "".join(an[_ri(0, an_len - 1)] for _ in range(24))
 
-    @overload
-    def tool_call_id(self) -> str: ...
-    @overload
-    def tool_call_id(self, count: Literal[1]) -> str: ...
-    @overload
-    def tool_call_id(self, count: int) -> str | list[str]: ...
-    def tool_call_id(self, count: int = 1) -> str | list[str]:
-        """Generate a tool call ID (e.g. call_abc123...)."""
-        if count == 1:
-            return self._one_tool_call_id()
-        # Inlined batch with local binding
-        _ri = self._engine.random_int
-        an = _ALPHANUM
-        an_len = len(an)
-        return [
-            "call_" + "".join(an[_ri(0, an_len - 1)] for _j in range(24))
-            for _ in range(count)
-        ]
-
-    @overload
-    def mcp_server_name(self) -> str: ...
-    @overload
-    def mcp_server_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def mcp_server_name(self, count: int) -> str | list[str]: ...
-    def mcp_server_name(self, count: int = 1) -> str | list[str]:
-        """Generate an MCP server name (e.g. filesystem, github)."""
-        if count == 1:
-            return self._engine.choice(_MCP_SERVER_NAMES)
-        return self._engine.choices(_MCP_SERVER_NAMES, count)
-
-    @overload
-    def agent_name(self) -> str: ...
-    @overload
-    def agent_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def agent_name(self, count: int) -> str | list[str]: ...
-    def agent_name(self, count: int = 1) -> str | list[str]:
-        """Generate an AI agent name (e.g. ResearchAgent, CodingAssistant)."""
-        if count == 1:
-            return self._engine.choice(_AGENT_NAMES)
-        return self._engine.choices(_AGENT_NAMES, count)
-
-    @overload
-    def capability(self) -> str: ...
-    @overload
-    def capability(self, count: Literal[1]) -> str: ...
-    @overload
-    def capability(self, count: int) -> str | list[str]: ...
-    def capability(self, count: int = 1) -> str | list[str]:
-        """Generate an LLM capability (e.g. tool-use, streaming, vision)."""
-        if count == 1:
-            return self._engine.choice(_CAPABILITIES)
-        return self._engine.choices(_CAPABILITIES, count)
-
-    # ===================================================================
-    # RAG / Embeddings
-    # ===================================================================
-
-    @overload
-    def embedding_model(self) -> str: ...
-    @overload
-    def embedding_model(self, count: Literal[1]) -> str: ...
-    @overload
-    def embedding_model(self, count: int) -> str | list[str]: ...
-    def embedding_model(self, count: int = 1) -> str | list[str]:
-        """Generate an embedding model name."""
-        if count == 1:
-            return self._engine.choice(_EMBEDDING_MODELS)
-        return self._engine.choices(_EMBEDDING_MODELS, count)
-
-    @overload
-    def vector_db_name(self) -> str: ...
-    @overload
-    def vector_db_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def vector_db_name(self, count: int) -> str | list[str]: ...
-    def vector_db_name(self, count: int = 1) -> str | list[str]:
-        """Generate a vector database name (e.g. Pinecone, ChromaDB)."""
-        if count == 1:
-            return self._engine.choice(_VECTOR_DB_NAMES)
-        return self._engine.choices(_VECTOR_DB_NAMES, count)
-
     def _one_chunk_id(self) -> str:
         # Format: chunk_XXXXXXXX (8 hex chars)
         bits = self._engine.getrandbits(32)
         return f"chunk_{bits:08x}"
 
-    @overload
-    def chunk_id(self) -> str: ...
-    @overload
-    def chunk_id(self, count: Literal[1]) -> str: ...
-    @overload
-    def chunk_id(self, count: int) -> str | list[str]: ...
-    def chunk_id(self, count: int = 1) -> str | list[str]:
-        """Generate a document chunk ID (e.g. chunk_a1b2c3d4)."""
-        if count == 1:
-            return self._one_chunk_id()
-        # Inlined batch with local binding
-        _getrandbits = self._engine.getrandbits
-        return [f"chunk_{_getrandbits(32):08x}" for _ in range(count)]
-
     def _one_similarity_score(self) -> str:
         # Score between 0.0 and 1.0 with 4 decimal places
         return f"{self._engine.random_int(0, 10000) / 10000.0:.4f}"
-
-    @overload
-    def similarity_score(self) -> str: ...
-    @overload
-    def similarity_score(self, count: Literal[1]) -> str: ...
-    @overload
-    def similarity_score(self, count: int) -> str | list[str]: ...
-    def similarity_score(self, count: int = 1) -> str | list[str]:
-        """Generate a similarity/relevance score (0.0000-1.0000)."""
-        if count == 1:
-            return self._one_similarity_score()
-        # Inlined batch with local binding
-        _ri = self._engine.random_int
-        return [f"{_ri(0, 10000) / 10000.0:.4f}" for _ in range(count)]
-
-    @overload
-    def namespace(self) -> str: ...
-    @overload
-    def namespace(self, count: Literal[1]) -> str: ...
-    @overload
-    def namespace(self, count: int) -> str | list[str]: ...
-    def namespace(self, count: int = 1) -> str | list[str]:
-        """Generate a vector DB namespace name."""
-        if count == 1:
-            return self._engine.choice(_NAMESPACES)
-        return self._engine.choices(_NAMESPACES, count)
-
-    # ===================================================================
-    # Content moderation
-    # ===================================================================
-
-    @overload
-    def moderation_category(self) -> str: ...
-    @overload
-    def moderation_category(self, count: Literal[1]) -> str: ...
-    @overload
-    def moderation_category(self, count: int) -> str | list[str]: ...
-    def moderation_category(self, count: int = 1) -> str | list[str]:
-        """Generate a content moderation category."""
-        if count == 1:
-            return self._engine.choice(_MODERATION_CATEGORIES)
-        return self._engine.choices(_MODERATION_CATEGORIES, count)
 
     def _one_moderation_score(self) -> str:
         # Score between 0.0000 and 1.0000
         return f"{self._engine.random_int(0, 10000) / 10000.0:.4f}"
 
-    @overload
-    def moderation_score(self) -> str: ...
-    @overload
-    def moderation_score(self, count: Literal[1]) -> str: ...
-    @overload
-    def moderation_score(self, count: int) -> str | list[str]: ...
-    def moderation_score(self, count: int = 1) -> str | list[str]:
-        """Generate a moderation score (0.0000-1.0000)."""
-        if count == 1:
-            return self._one_moderation_score()
-        _ri = self._engine.random_int
-        return [f"{_ri(0, 10000) / 10000.0:.4f}" for _ in range(count)]
-
-    @overload
-    def harm_label(self) -> str: ...
-    @overload
-    def harm_label(self, count: Literal[1]) -> str: ...
-    @overload
-    def harm_label(self, count: int) -> str | list[str]: ...
-    def harm_label(self, count: int = 1) -> str | list[str]:
-        """Generate a harm/safety label (e.g. safe, blocked, flagged)."""
-        if count == 1:
-            return self._engine.choice(_HARM_LABELS)
-        return self._engine.choices(_HARM_LABELS, count)
-
-    # ===================================================================
-    # Usage / Billing
-    # ===================================================================
-
     def _one_token_count(self) -> str:
         return str(self._engine.random_int(1, 16384))
-
-    @overload
-    def token_count(self) -> str: ...
-    @overload
-    def token_count(self, count: Literal[1]) -> str: ...
-    @overload
-    def token_count(self, count: int) -> str | list[str]: ...
-    def token_count(self, count: int = 1) -> str | list[str]:
-        """Generate a token count (1-16384)."""
-        if count == 1:
-            return self._one_token_count()
-        _ri = self._engine.random_int
-        return [str(_ri(1, 16384)) for _ in range(count)]
 
     def _one_prompt_tokens(self) -> str:
         return str(self._engine.random_int(10, 8192))
 
-    @overload
-    def prompt_tokens(self) -> str: ...
-    @overload
-    def prompt_tokens(self, count: Literal[1]) -> str: ...
-    @overload
-    def prompt_tokens(self, count: int) -> str | list[str]: ...
-    def prompt_tokens(self, count: int = 1) -> str | list[str]:
-        """Generate a prompt token count (10-8192)."""
-        if count == 1:
-            return self._one_prompt_tokens()
-        _ri = self._engine.random_int
-        return [str(_ri(10, 8192)) for _ in range(count)]
-
     def _one_completion_tokens(self) -> str:
         return str(self._engine.random_int(1, 4096))
-
-    @overload
-    def completion_tokens(self) -> str: ...
-    @overload
-    def completion_tokens(self, count: Literal[1]) -> str: ...
-    @overload
-    def completion_tokens(self, count: int) -> str | list[str]: ...
-    def completion_tokens(self, count: int = 1) -> str | list[str]:
-        """Generate a completion token count (1-4096)."""
-        if count == 1:
-            return self._one_completion_tokens()
-        _ri = self._engine.random_int
-        return [str(_ri(1, 4096)) for _ in range(count)]
 
     def _one_cost_estimate(self) -> str:
         # Cost in USD: $0.0001 to $9.9999
         cents = self._engine.random_int(1, 99999)
         return f"${cents / 10000.0:.4f}"
 
-    @overload
-    def cost_estimate(self) -> str: ...
-    @overload
-    def cost_estimate(self, count: Literal[1]) -> str: ...
-    @overload
-    def cost_estimate(self, count: int) -> str | list[str]: ...
-    def cost_estimate(self, count: int = 1) -> str | list[str]:
-        """Generate a cost estimate in USD (e.g. $0.0234)."""
-        if count == 1:
-            return self._one_cost_estimate()
-        _ri = self._engine.random_int
-        return [f"${_ri(1, 99999) / 10000.0:.4f}" for _ in range(count)]
-
     def _one_rate_limit_header(self) -> str:
         name = self._engine.choice(_RATE_LIMIT_NAMES)
         value = str(self._engine.random_int(0, 100000))
         return f"{name}: {value}"
 
-    @overload
-    def rate_limit_header(self) -> str: ...
-    @overload
-    def rate_limit_header(self, count: Literal[1]) -> str: ...
-    @overload
-    def rate_limit_header(self, count: int) -> str | list[str]: ...
+    # Public API — custom methods
+
+    def api_key(self, count: int = 1) -> str | list[str]:
+        """Generate a realistic-looking API key."""
+        if count == 1:
+            return self._one_api_key()
+        return [self._one_api_key() for _ in range(count)]
+
+    def tool_call_id(self, count: int = 1) -> str | list[str]:
+        """Generate a tool call ID (e.g. call_abc123...)."""
+        if count == 1:
+            return self._one_tool_call_id()
+        return [self._one_tool_call_id() for _ in range(count)]
+
+    def chunk_id(self, count: int = 1) -> str | list[str]:
+        """Generate a document chunk ID (e.g. chunk_a1b2c3d4)."""
+        if count == 1:
+            return self._one_chunk_id()
+        return [self._one_chunk_id() for _ in range(count)]
+
+    def similarity_score(self, count: int = 1) -> str | list[str]:
+        """Generate a similarity/relevance score (0.0000-1.0000)."""
+        if count == 1:
+            return self._one_similarity_score()
+        return [self._one_similarity_score() for _ in range(count)]
+
+    def moderation_score(self, count: int = 1) -> str | list[str]:
+        """Generate a moderation score (0.0000-1.0000)."""
+        if count == 1:
+            return self._one_moderation_score()
+        return [self._one_moderation_score() for _ in range(count)]
+
+    def token_count(self, count: int = 1) -> str | list[str]:
+        """Generate a token count (1-16384)."""
+        if count == 1:
+            return self._one_token_count()
+        return [self._one_token_count() for _ in range(count)]
+
+    def prompt_tokens(self, count: int = 1) -> str | list[str]:
+        """Generate a prompt token count (10-8192)."""
+        if count == 1:
+            return self._one_prompt_tokens()
+        return [self._one_prompt_tokens() for _ in range(count)]
+
+    def completion_tokens(self, count: int = 1) -> str | list[str]:
+        """Generate a completion token count (1-4096)."""
+        if count == 1:
+            return self._one_completion_tokens()
+        return [self._one_completion_tokens() for _ in range(count)]
+
+    def cost_estimate(self, count: int = 1) -> str | list[str]:
+        """Generate a cost estimate in USD (e.g. $0.0234)."""
+        if count == 1:
+            return self._one_cost_estimate()
+        return [self._one_cost_estimate() for _ in range(count)]
+
     def rate_limit_header(self, count: int = 1) -> str | list[str]:
-        """Generate a rate limit HTTP header (e.g. x-ratelimit-remaining-tokens: 4500)."""
+        """Generate a rate limit HTTP header."""
         if count == 1:
             return self._one_rate_limit_header()
-        # Inlined batch with local binding
-        _choice = self._engine.choice
-        _ri = self._engine.random_int
-        _names = _RATE_LIMIT_NAMES
-        return [f"{_choice(_names)}: {_ri(0, 100000)}" for _ in range(count)]
+        return [self._one_rate_limit_header() for _ in range(count)]
+
+    # AI Chat methods (merged from ai_chat provider)
+
+    def chat_role(self, count: int = 1) -> str | list[str]:
+        """Generate a chat message role (user, assistant, system, tool)."""
+        if count == 1:
+            return self._engine.weighted_choice(_CHAT_ROLE_VALUES, _CHAT_ROLE_WEIGHTS)
+        return self._engine.weighted_choices(
+            _CHAT_ROLE_VALUES, _CHAT_ROLE_WEIGHTS, count
+        )
+
+    def chat_model(self, count: int = 1) -> str | list[str]:
+        """Generate a model name for the chat."""
+        return self.model_name(count)
+
+    def chat_content(self, count: int = 1) -> str | list[str]:
+        """Generate chat message content."""
+        return self._forge.ai_prompt.user_prompt(count)
+
+    def chat_tokens(self, count: int = 1) -> str | list[str]:
+        """Generate a token count for a chat message."""
+        return self.token_count(count)
+
+    def chat_finish_reason(self, count: int = 1) -> str | list[str]:
+        """Generate a finish reason for a chat message."""
+        return self.finish_reason(count)
+
+    def chat_message(self, count: int = 1) -> dict[str, str] | list[dict[str, str]]:
+        """Generate a realistic chat message dict with role, model, content, tokens."""
+
+        def _one() -> dict[str, str]:
+            role = self._engine.weighted_choice(_CHAT_ROLE_VALUES, _CHAT_ROLE_WEIGHTS)
+            model = self.model_name()
+            content = (
+                self._forge.ai_prompt.system_prompt()
+                if role == "system"
+                else self._forge.ai_prompt.user_prompt()
+            )
+            return {
+                "role": role,
+                "model": model,
+                "content": content,
+                "tokens": self.token_count(),
+                "finish_reason": self.finish_reason(),
+            }
+
+        if count == 1:
+            return _one()
+        return [_one() for _ in range(count)]

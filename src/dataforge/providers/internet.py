@@ -3,7 +3,6 @@
 import re
 import unicodedata
 from types import ModuleType
-from typing import Literal, overload
 
 from dataforge.backend import RandomEngine
 from dataforge.providers.base import BaseProvider
@@ -25,15 +24,6 @@ _SLUG_WORDS: tuple[str, ...] = (
     "green",
     "dark",
     "light",
-    "quick",
-    "easy",
-    "safe",
-    "bold",
-    "true",
-    "deep",
-    "high",
-    "low",
-    "wide",
 )
 
 _URL_PROTOCOLS: tuple[str, ...] = ("https", "http")
@@ -140,9 +130,7 @@ class InternetProvider(BaseProvider):
             person_data.last_names
         )
 
-    # ------------------------------------------------------------------
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_username(self) -> str:
         first = self._engine.choice(self._ascii_first_names)
@@ -192,24 +180,10 @@ class InternetProvider(BaseProvider):
     def _one_safe_email(self) -> str:
         return self._one_email_from(_SAFE_DOMAINS)
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
-    @overload
-    def username(self) -> str: ...
-    @overload
-    def username(self, count: Literal[1]) -> str: ...
-    @overload
-    def username(self, count: int) -> str | list[str]: ...
     def username(self, count: int = 1) -> str | list[str]:
-        """Generate a random username.
-
-        Parameters
-        ----------
-        count : int
-            Number of usernames to generate.
-        """
+        """Generate a random username."""
         if count == 1:
             return self._one_username()
         # Vectorized batch: bulk random selections avoid per-item overhead
@@ -223,38 +197,14 @@ class InternetProvider(BaseProvider):
             for fmt, f, ln in zip(fmts, firsts, lasts)
         ]
 
-    @overload
-    def email(self) -> str: ...
-    @overload
-    def email(self, count: Literal[1]) -> str: ...
-    @overload
-    def email(self, count: int) -> str | list[str]: ...
     def email(self, count: int = 1) -> str | list[str]:
-        """Generate a random email address.
-
-        Parameters
-        ----------
-        count : int
-            Number of emails to generate.
-        """
+        """Generate a random email address."""
         if count == 1:
             return self._one_email()
         return self._batch_emails(self._free_email_domains, count)
 
-    @overload
-    def domain(self) -> str: ...
-    @overload
-    def domain(self, count: Literal[1]) -> str: ...
-    @overload
-    def domain(self, count: int) -> str | list[str]: ...
     def domain(self, count: int = 1) -> str | list[str]:
-        """Generate a random domain name.
-
-        Parameters
-        ----------
-        count : int
-            Number of domains to generate.
-        """
+        """Generate a random domain name."""
         if count == 1:
             return self._one_domain()
         # Vectorized batch: bulk random selections
@@ -263,20 +213,8 @@ class InternetProvider(BaseProvider):
         suffixes = _choices(self._domain_suffixes, count)
         return [f"{w}.{s}" for w, s in zip(words, suffixes)]
 
-    @overload
-    def url(self) -> str: ...
-    @overload
-    def url(self, count: Literal[1]) -> str: ...
-    @overload
-    def url(self, count: int) -> str | list[str]: ...
     def url(self, count: int = 1) -> str | list[str]:
-        """Generate a random URL.
-
-        Parameters
-        ----------
-        count : int
-            Number of URLs to generate.
-        """
+        """Generate a random URL."""
         if count == 1:
             return self._one_url()
         # Vectorized batch: bulk random selections
@@ -286,46 +224,20 @@ class InternetProvider(BaseProvider):
         suffixes = _choices(self._domain_suffixes, count)
         return [f"{p}://{w}.{s}" for p, w, s in zip(protocols, words, suffixes)]
 
-    @overload
-    def ipv4(self) -> str: ...
-    @overload
-    def ipv4(self, count: Literal[1]) -> str: ...
-    @overload
-    def ipv4(self, count: int) -> str | list[str]: ...
     def ipv4(self, count: int = 1) -> str | list[str]:
-        """Generate a random IPv4 address.
-
-        Parameters
-        ----------
-        count : int
-            Number of IPs to generate.
-        """
+        """Generate a random IPv4 address."""
         if count == 1:
             return self._one_ipv4()
-        # Inlined batch with local-bound getrandbits
         _getrandbits = self._engine.getrandbits
         return [
             f"{(b := _getrandbits(32)) >> 24}.{(b >> 16) & 0xFF}.{(b >> 8) & 0xFF}.{b & 0xFF}"
             for _ in range(count)
         ]
 
-    @overload
-    def slug(self) -> str: ...
-    @overload
-    def slug(self, count: Literal[1]) -> str: ...
-    @overload
-    def slug(self, count: int) -> str | list[str]: ...
     def slug(self, count: int = 1) -> str | list[str]:
-        """Generate a random URL-safe slug (e.g. ``"fast-cool-open"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of slugs to generate.
-        """
+        """Generate a random URL-safe slug."""
         if count == 1:
             return self._one_slug()
-        # Vectorized: pick all words in one bulk call, then split
         _ri = self._engine.random_int
         _choices = self._engine.choices
         result: list[str] = []
@@ -335,41 +247,14 @@ class InternetProvider(BaseProvider):
             result.append("-".join(words))
         return result
 
-    @overload
-    def tld(self) -> str: ...
-    @overload
-    def tld(self, count: Literal[1]) -> str: ...
-    @overload
-    def tld(self, count: int) -> str | list[str]: ...
     def tld(self, count: int = 1) -> str | list[str]:
-        """Generate a random top-level domain (e.g. ``"io"``, ``"dev"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of TLDs to generate.
-        """
+        """Generate a random top-level domain."""
         if count == 1:
             return self._engine.choice(self._domain_suffixes)
         return self._engine.choices(self._domain_suffixes, count)
 
-    @overload
-    def safe_email(self) -> str: ...
-    @overload
-    def safe_email(self, count: Literal[1]) -> str: ...
-    @overload
-    def safe_email(self, count: int) -> str | list[str]: ...
     def safe_email(self, count: int = 1) -> str | list[str]:
-        """Generate a random email using ``example.com``/``example.org``.
-
-        These addresses are safe for testing — they will never reach
-        a real mailbox.
-
-        Parameters
-        ----------
-        count : int
-            Number of emails to generate.
-        """
+        """Generate a random email using example.com/example.org."""
         if count == 1:
             return self._one_safe_email()
         return self._batch_emails(_SAFE_DOMAINS, count)

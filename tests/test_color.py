@@ -7,8 +7,6 @@ from dataforge.providers.color import _COLOR_NAMES
 
 
 class TestColorScalar:
-    """Tests for single-item color generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -79,8 +77,6 @@ class TestColorScalar:
 
 
 class TestColorBatch:
-    """Tests for batch color generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 

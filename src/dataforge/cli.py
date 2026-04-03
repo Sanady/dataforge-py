@@ -1,34 +1,4 @@
-"""dataforge CLI — generate fake data from the command line.
-
-Usage::
-
-    dataforge --count 100 --format csv name email phone
-    dataforge --count 10 --format json first_name last_name city
-    dataforge --locale de_DE --count 5 full_name address
-    dataforge --list-fields
-    dataforge --list-providers
-    dataforge --version
-
-    # SQL output
-    dataforge --format sql --table users first_name email city
-
-    # TSV output
-    dataforge --format tsv first_name email
-
-    # Custom delimiter
-    dataforge --format csv --delimiter "|" first_name email
-
-    # Column renaming
-    dataforge "Name=full_name" "Email=email" "City=city"
-
-    # Streaming (memory-efficient for large counts)
-    dataforge --stream --count 1000000 --format csv -o data.csv first_name email
-
-    # Unique values
-    dataforge --unique --count 50 first_name
-
-Supported output formats: text, csv, tsv, json, jsonl, sql
-"""
+"""dataforge CLI — generate fake data from the command line."""
 
 import argparse
 import csv
@@ -41,10 +11,7 @@ from dataforge.registry import get_field_map
 
 
 def _parse_field_spec(spec: str) -> tuple[str, str]:
-    """Parse a field spec like ``"Name=full_name"`` or ``"email"``.
-
-    Returns ``(column_name, field_name)``.
-    """
+    """Parse a field spec like ``"Name=full_name"`` or ``"email"``."""
     if "=" in spec:
         col_name, field_name = spec.split("=", 1)
         return col_name.strip(), field_name.strip()
@@ -218,7 +185,6 @@ def main(argv: list[str] | None = None) -> int:
 
     field_map = get_field_map()
 
-    # --tui: launch interactive TUI
     if args.tui:
         try:
             from dataforge.tui import launch
@@ -229,7 +195,6 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         return 0
 
-    # --infer: infer schema from CSV and generate data
     if args.infer:
         forge = DataForge(locale=args.locale, seed=args.seed)
         try:
@@ -241,7 +206,6 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(rows, indent=2, ensure_ascii=False, default=str))
         return 0
 
-    # --anonymize: anonymize a CSV file
     if args.anonymize:
         forge = DataForge(locale=args.locale, seed=args.seed)
         from dataforge.anonymizer import Anonymizer
@@ -256,7 +220,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Anonymized output written to {output}", file=sys.stderr)
         return 0
 
-    # --list-providers
     if args.list_providers:
         from dataforge.registry import get_provider_info
 
@@ -267,27 +230,22 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {name:20s}  ({len(fm)} fields)")
         return 0
 
-    # --list-fields
     if args.list_fields:
-        # Group fields by provider
         for name in sorted(field_map.keys()):
             provider, method = field_map[name]
             print(f"  {name:24s}  ({provider}.{method})")
         return 0
 
     if not args.fields:
-        # Default fields (only when no --schema)
         if not args.schema:
             args.fields = ["first_name", "last_name", "email"]
         else:
             args.fields = []
 
-    # Parse field specs (handle column renaming "Name=full_name")
     field_specs = [_parse_field_spec(f) for f in args.fields]
     headers = [col_name for col_name, _ in field_specs]
     field_names = [field_name for _, field_name in field_specs]
 
-    # Validate fields before generating (skip when --schema provides fields)
     if not args.schema:
         for col_name, field_name in field_specs:
             if field_name not in field_map and "." not in field_name:
@@ -297,7 +255,6 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 return 1
 
-    # Validate --stream requires --output
     if args.stream and not args.output:
         print(
             "Error: --stream requires --output to specify a file path.",
@@ -305,7 +262,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    # Validate --format sql does not combine with --stream (not supported)
     if args.stream and args.format == "sql":
         print(
             "Error: --stream is not supported with --format sql.",
@@ -315,16 +271,13 @@ def main(argv: list[str] | None = None) -> int:
 
     forge = DataForge(locale=args.locale, seed=args.seed)
 
-    # Build field dict for Schema (supports column renaming)
     if field_specs and any(col != field for col, field in field_specs):
-        # Column renaming in use — build dict
         fields_arg: list[str] | dict[str, str] = {
             col: field for col, field in field_specs
         }
     else:
         fields_arg = field_names
 
-    # Parse --null-fields
     null_fields: dict[str, float] | None = None
     if args.null_fields:
         null_fields = {}
@@ -355,7 +308,6 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             null_fields[name.strip()] = prob
 
-    # --schema: load field definitions from a file
     if args.schema:
         from dataforge.schema_io import load_schema, dict_to_schema_args
 
@@ -369,11 +321,9 @@ def main(argv: list[str] | None = None) -> int:
             schema_def
         )
 
-        # CLI --count overrides schema count only when explicitly provided
         count = args.count if args.count != 10 else schema_count
         args.count = count
 
-        # Build fields_arg and headers from loaded schema
         if isinstance(schema_fields, dict):
             fields_arg = schema_fields
             headers = list(schema_fields.keys())
@@ -381,11 +331,9 @@ def main(argv: list[str] | None = None) -> int:
             fields_arg = schema_fields
             headers = list(schema_fields)
 
-        # Merge null_fields: CLI --null-fields wins over schema file
         if null_fields is None and schema_null:
             null_fields = schema_null
 
-    # --save-schema: save current schema definition to a file and exit
     if args.save_schema:
         from dataforge.schema_io import schema_to_dict, save_schema as _save_schema
 
@@ -405,23 +353,19 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    # Resolve delimiter
     delimiter = args.delimiter
     if delimiter is None:
         delimiter = "\t" if args.format == "tsv" else ","
 
-    # Resolve encoding and compression
     encoding = args.encoding
     compress: bool | None = True if args.compress else None
 
-    # Build chaos transformer if --chaos is set
     chaos_arg = None
     if args.chaos is not None:
         from dataforge.chaos import ChaosTransformer
 
         chaos_arg = ChaosTransformer(null_rate=args.chaos)
 
-    # --stream mode: write directly to file
     if args.stream:
         fmt = args.format
         path = args.output
@@ -444,8 +388,6 @@ def main(argv: list[str] | None = None) -> int:
             )
             _progress_done(written)
         elif fmt == "json":
-            # JSON array can't easily stream, but we can generate
-            # and write — still respects --output
             schema_j = forge.schema(
                 fields_arg, null_fields=null_fields, chaos=chaos_arg
             )
@@ -457,7 +399,6 @@ def main(argv: list[str] | None = None) -> int:
             )
             _progress_done(args.count)
         elif fmt == "text":
-            # Stream text rows to file
             from dataforge.schema import _open_file
 
             written = 0
@@ -469,9 +410,7 @@ def main(argv: list[str] | None = None) -> int:
             _progress_done(written)
         return 0
 
-    # Non-streaming mode: generate all data in memory
     if args.unique:
-        # Generate with unique proxy — row at a time
         schema = forge.schema(fields_arg, null_fields=null_fields, chaos=chaos_arg)
         rows: list[dict[str, object]] = []
         seen: dict[str, set[object]] = {h: set() for h in headers}
@@ -499,7 +438,6 @@ def main(argv: list[str] | None = None) -> int:
         schema_gen = forge.schema(fields_arg, null_fields=null_fields, chaos=chaos_arg)
         rows = schema_gen.generate(count=args.count)
 
-    # Determine output destination
     out_file = None
     if args.output:
         from dataforge.schema import _open_file
@@ -516,7 +454,6 @@ def main(argv: list[str] | None = None) -> int:
         fmt = args.format
 
         if fmt == "text":
-            # Aligned columns
             str_rows = [{h: _format_value(row[h]) for h in headers} for row in rows]
             col_widths = [len(h) for h in headers]
             for row in str_rows:
@@ -541,13 +478,11 @@ def main(argv: list[str] | None = None) -> int:
             writer = csv.DictWriter(buf, fieldnames=headers, delimiter=delimiter)
             if not args.no_header:
                 writer.writeheader()
-            # Convert all values to strings for CSV
             for row in rows:
                 writer.writerow({h: _format_value(row[h]) for h in headers})
             print(buf.getvalue(), end="", file=out)
 
         elif fmt == "json":
-            # Serialize with native types (int, bool stay as numbers/bools)
             print(
                 json.dumps(
                     [{h: row[h] for h in headers} for row in rows],

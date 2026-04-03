@@ -4,8 +4,6 @@ from dataforge.backend import RandomEngine
 
 
 class TestRandomEngineScalar:
-    """Tests for single-item generation."""
-
     def test_choice_returns_string(self) -> None:
         engine = RandomEngine(seed=1)
         data = ("a", "b", "c")
@@ -33,8 +31,6 @@ class TestRandomEngineScalar:
 
 
 class TestRandomEngineChoices:
-    """Tests for batch generation."""
-
     def test_choices_returns_list(self) -> None:
         engine = RandomEngine(seed=1)
         data = ("a", "b", "c")
@@ -52,8 +48,6 @@ class TestRandomEngineChoices:
 
 
 class TestRandomEngineSeed:
-    """Tests for reproducibility."""
-
     def test_same_seed_same_output(self) -> None:
         engine1 = RandomEngine(seed=42)
         engine2 = RandomEngine(seed=42)
@@ -81,8 +75,6 @@ class TestRandomEngineSeed:
 
 
 class TestWeightedChoices:
-    """Tests for weighted_choices on RandomEngine."""
-
     def test_weighted_choices_returns_list(self) -> None:
         engine = RandomEngine(seed=1)
         data = ("a", "b", "c")

@@ -45,16 +45,6 @@ street_names: tuple[str, ...] = (
     "Old City Road",
     "New Market Road",
     "Bazaar Road",
-    "Temple Road",
-    "Lake Road",
-    "Park Road",
-    "Sector Road",
-    "Phase Road",
-    "Industrial Area Road",
-    "University Road",
-    "Hospital Road",
-    "Court Road",
-    "Bypass Road",
 )
 
 street_suffixes: tuple[str, ...] = (

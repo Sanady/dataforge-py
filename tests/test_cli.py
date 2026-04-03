@@ -11,8 +11,6 @@ from dataforge.registry import get_field_map
 
 
 class TestCliListFields:
-    """Test --list-fields flag."""
-
     def test_list_fields_returns_zero(self) -> None:
         result = main(["--list-fields"])
         assert result == 0
@@ -26,8 +24,6 @@ class TestCliListFields:
 
 
 class TestCliErrorHandling:
-    """Test error cases."""
-
     def test_unknown_field_returns_one(self) -> None:
         result = main(["--count", "1", "nonexistent_field_xyz"])
         assert result == 1
@@ -40,8 +36,6 @@ class TestCliErrorHandling:
 
 
 class TestCliTextFormat:
-    """Test default text output format."""
-
     def test_default_format(self, capsys: pytest.CaptureFixture[str]) -> None:
         result = main(["--count", "3", "--seed", "42", "first_name", "email"])
         assert result == 0
@@ -51,7 +45,6 @@ class TestCliTextFormat:
         assert len(lines) == 5
 
     def test_default_fields(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """With no fields specified, should default to first_name, last_name, email."""
         result = main(["--count", "2", "--seed", "42"])
         assert result == 0
         captured = capsys.readouterr()
@@ -64,8 +57,6 @@ class TestCliTextFormat:
 
 
 class TestCliCsvFormat:
-    """Test CSV output format."""
-
     def test_csv_output(self, capsys: pytest.CaptureFixture[str]) -> None:
         result = main(
             ["--count", "5", "--format", "csv", "--seed", "42", "first_name", "city"]
@@ -98,8 +89,6 @@ class TestCliCsvFormat:
 
 
 class TestCliJsonFormat:
-    """Test JSON output format."""
-
     def test_json_output(self, capsys: pytest.CaptureFixture[str]) -> None:
         result = main(
             ["--count", "3", "--format", "json", "--seed", "42", "first_name", "email"]
@@ -114,8 +103,6 @@ class TestCliJsonFormat:
 
 
 class TestCliJsonlFormat:
-    """Test JSONL output format."""
-
     def test_jsonl_output(self, capsys: pytest.CaptureFixture[str]) -> None:
         result = main(
             [
@@ -140,8 +127,6 @@ class TestCliJsonlFormat:
 
 
 class TestCliLocale:
-    """Test locale option."""
-
     def test_locale_option(self) -> None:
         result = main(
             ["--count", "3", "--locale", "de_DE", "--seed", "42", "first_name"]
@@ -150,8 +135,6 @@ class TestCliLocale:
 
 
 class TestCliSeed:
-    """Test seed option for reproducibility."""
-
     def test_seed_reproducible(self, capsys: pytest.CaptureFixture[str]) -> None:
         main(["--count", "5", "--format", "json", "--seed", "123", "first_name"])
         out1 = capsys.readouterr().out
@@ -172,8 +155,6 @@ class TestCliSeed:
 
 
 class TestCliAllFields:
-    """Test that every field in the registry can be generated without error."""
-
     @pytest.mark.parametrize("field", sorted(get_field_map().keys()))
     def test_field_generates(self, field: str) -> None:
         result = main(["--count", "1", "--seed", "42", field])
@@ -181,8 +162,6 @@ class TestCliAllFields:
 
 
 class TestCliNoHeader:
-    """Test --no-header flag."""
-
     def test_text_no_header(self, capsys: pytest.CaptureFixture[str]) -> None:
         result = main(["--count", "3", "--no-header", "--seed", "42", "first_name"])
         assert result == 0
@@ -214,8 +193,6 @@ class TestCliNoHeader:
 
 
 class TestCliOutput:
-    """Test --output flag."""
-
     def test_output_to_file(self, tmp_path) -> None:
         out_file = str(tmp_path / "out.csv")
         result = main(

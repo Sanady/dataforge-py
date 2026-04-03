@@ -13,8 +13,6 @@ _ALL_CATEGORIES = {"text", "document", "image", "audio", "video", "archive"}
 
 
 class TestFileScalar:
-    """Tests for single-item file generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -74,8 +72,6 @@ class TestFileScalar:
 
 
 class TestFileBatch:
-    """Tests for batch file generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 

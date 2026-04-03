@@ -1,4 +1,4 @@
-"""Tests for the AiChatProvider (compound, _needs_forge=True)."""
+"""Tests for AI Chat methods (merged into LlmProvider)."""
 
 from dataforge import DataForge
 
@@ -8,20 +8,19 @@ class TestChatRole:
         self.forge = DataForge(locale="en_US", seed=42)
 
     def test_returns_str(self) -> None:
-        result = self.forge.ai_chat.chat_role()
+        result = self.forge.llm.chat_role()
         assert isinstance(result, str)
         assert result in {"system", "user", "assistant", "tool"}
 
     def test_batch(self) -> None:
-        results = self.forge.ai_chat.chat_role(count=100)
+        results = self.forge.llm.chat_role(count=100)
         assert isinstance(results, list)
         assert len(results) == 100
         valid = {"system", "user", "assistant", "tool"}
         assert all(r in valid for r in results)
 
     def test_weighted_distribution(self) -> None:
-        """user and assistant should appear more often than system and tool."""
-        results = self.forge.ai_chat.chat_role(count=1000)
+        results = self.forge.llm.chat_role(count=1000)
         counts = {r: results.count(r) for r in {"user", "assistant", "system", "tool"}}
         # user and assistant have weight 40 each, system 15, tool 5
         assert counts["user"] > counts["system"]
@@ -33,11 +32,11 @@ class TestChatModel:
         self.forge = DataForge(locale="en_US", seed=42)
 
     def test_returns_str(self) -> None:
-        result = self.forge.ai_chat.chat_model()
+        result = self.forge.llm.chat_model()
         assert isinstance(result, str)
 
     def test_batch(self) -> None:
-        results = self.forge.ai_chat.chat_model(count=50)
+        results = self.forge.llm.chat_model(count=50)
         assert len(results) == 50
 
 
@@ -46,12 +45,12 @@ class TestChatContent:
         self.forge = DataForge(locale="en_US", seed=42)
 
     def test_returns_str(self) -> None:
-        result = self.forge.ai_chat.chat_content()
+        result = self.forge.llm.chat_content()
         assert isinstance(result, str)
         assert len(result) > 10
 
     def test_batch(self) -> None:
-        results = self.forge.ai_chat.chat_content(count=50)
+        results = self.forge.llm.chat_content(count=50)
         assert len(results) == 50
 
 
@@ -60,13 +59,13 @@ class TestChatTokens:
         self.forge = DataForge(locale="en_US", seed=42)
 
     def test_returns_str(self) -> None:
-        result = self.forge.ai_chat.chat_tokens()
+        result = self.forge.llm.chat_tokens()
         assert isinstance(result, str)
         val = int(result)
         assert 1 <= val <= 16384
 
     def test_batch(self) -> None:
-        results = self.forge.ai_chat.chat_tokens(count=50)
+        results = self.forge.llm.chat_tokens(count=50)
         assert len(results) == 50
 
 
@@ -75,11 +74,11 @@ class TestChatFinishReason:
         self.forge = DataForge(locale="en_US", seed=42)
 
     def test_returns_str(self) -> None:
-        result = self.forge.ai_chat.chat_finish_reason()
+        result = self.forge.llm.chat_finish_reason()
         assert isinstance(result, str)
 
     def test_batch(self) -> None:
-        results = self.forge.ai_chat.chat_finish_reason(count=50)
+        results = self.forge.llm.chat_finish_reason(count=50)
         assert len(results) == 50
 
 
@@ -88,7 +87,7 @@ class TestChatMessage:
         self.forge = DataForge(locale="en_US", seed=42)
 
     def test_returns_dict(self) -> None:
-        msg = self.forge.ai_chat.chat_message()
+        msg = self.forge.llm.chat_message()
         assert isinstance(msg, dict)
         assert "role" in msg
         assert "model" in msg
@@ -99,7 +98,7 @@ class TestChatMessage:
         assert len(msg["content"]) > 0
 
     def test_batch(self) -> None:
-        msgs = self.forge.ai_chat.chat_message(count=20)
+        msgs = self.forge.llm.chat_message(count=20)
         assert isinstance(msgs, list)
         assert len(msgs) == 20
         for msg in msgs:
@@ -109,8 +108,8 @@ class TestChatMessage:
             assert "content" in msg
 
     def test_deterministic(self) -> None:
-        a = DataForge(seed=99).ai_chat.chat_message()
-        b = DataForge(seed=99).ai_chat.chat_message()
+        a = DataForge(seed=99).llm.chat_message()
+        b = DataForge(seed=99).llm.chat_message()
         assert a == b
 
 
@@ -139,7 +138,6 @@ class TestAiChatInSchema:
             assert row["chat_role"] in {"system", "user", "assistant", "tool"}
 
     def test_schema_mixed_providers(self) -> None:
-        """AI chat fields should work alongside other provider fields."""
         rows = self.forge.to_dict(
             fields=["chat_role", "chat_model", "first_name", "email"],
             count=5,

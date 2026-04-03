@@ -17,9 +17,7 @@ import pytest
 from dataforge import DataForge
 
 
-# ------------------------------------------------------------------
 # Fixtures
-# ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -27,9 +25,7 @@ def forge() -> DataForge:
     return DataForge(seed=42)
 
 
-# ==================================================================
 # SocialMediaProvider
-# ==================================================================
 
 
 class TestSocialMediaProvider:
@@ -96,9 +92,7 @@ class TestSocialMediaProvider:
         assert all(r["hashtag"].startswith("#") for r in rows)
 
 
-# ==================================================================
 # MusicProvider
-# ==================================================================
 
 
 class TestMusicProvider:
@@ -160,9 +154,7 @@ class TestMusicProvider:
         assert all("genre" in r for r in rows)
 
 
-# ==================================================================
 # SportsProvider
-# ==================================================================
 
 
 class TestSportsProvider:
@@ -213,9 +205,7 @@ class TestSportsProvider:
         assert len(rows) == 5
 
 
-# ==================================================================
 # FoodProvider
-# ==================================================================
 
 
 class TestFoodProvider:
@@ -265,9 +255,7 @@ class TestFoodProvider:
         assert len(rows) == 5
 
 
-# ==================================================================
 # LegalProvider
-# ==================================================================
 
 
 class TestLegalProvider:
@@ -321,9 +309,7 @@ class TestLegalProvider:
         assert len(rows) == 5
 
 
-# ==================================================================
 # RealEstateProvider
-# ==================================================================
 
 
 class TestRealEstateProvider:
@@ -382,9 +368,7 @@ class TestRealEstateProvider:
         assert len(rows) == 5
 
 
-# ==================================================================
 # WeatherProvider
-# ==================================================================
 
 
 class TestWeatherProvider:
@@ -449,9 +433,7 @@ class TestWeatherProvider:
         assert len(rows) == 5
 
 
-# ==================================================================
 # HardwareProvider
-# ==================================================================
 
 
 class TestHardwareProvider:
@@ -500,9 +482,7 @@ class TestHardwareProvider:
         assert len(rows) == 5
 
 
-# ==================================================================
 # LogisticsProvider
-# ==================================================================
 
 
 class TestLogisticsProvider:
@@ -566,14 +546,10 @@ class TestLogisticsProvider:
         assert len(rows) == 5
 
 
-# ==================================================================
 # Registry & Cross-provider tests
-# ==================================================================
 
 
 class TestRegistryDiscovery:
-    """Verify all 9 new providers are discovered by the registry."""
-
     def test_all_providers_in_registry(self) -> None:
         from dataforge.registry import get_provider_info
 
@@ -639,8 +615,6 @@ class TestRegistryDiscovery:
 
 
 class TestBatchConsistency:
-    """Ensure batch generation matches scalar generation semantics."""
-
     @pytest.mark.parametrize(
         "provider_name,method_name",
         [
@@ -690,8 +664,6 @@ class TestBatchConsistency:
 
 
 class TestReproducibility:
-    """Verify seeded providers produce deterministic output."""
-
     @pytest.mark.parametrize(
         "provider_name,method_name",
         [

@@ -4,8 +4,6 @@ All data is locale-independent and stored as module-level constants
 for maximum performance (bytecode constants, zero import overhead).
 """
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
 # User-Agent templates — realistic browser strings
@@ -103,9 +101,13 @@ class NetworkProvider(BaseProvider):
         "http_method": "http_method",
         "http_status_code": "http_status_code",
     }
-    # ------------------------------------------------------------------
+
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "user_agent": _USER_AGENTS,
+        "http_method": _HTTP_METHODS,
+    }
+
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_ipv6(self) -> str:
         # Single getrandbits(128) call instead of 32 choice() calls.
@@ -127,24 +129,10 @@ class NetworkProvider(BaseProvider):
         suffix = self._engine.choice(_HOST_SUFFIXES)
         return f"{prefix}-{num}{suffix}"
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
-    @overload
-    def ipv6(self) -> str: ...
-    @overload
-    def ipv6(self, count: Literal[1]) -> str: ...
-    @overload
-    def ipv6(self, count: int) -> str | list[str]: ...
     def ipv6(self, count: int = 1) -> str | list[str]:
-        """Generate a random IPv6 address.
-
-        Parameters
-        ----------
-        count : int
-            Number of addresses to generate.
-        """
+        """Generate a random IPv6 address."""
         if count == 1:
             return self._one_ipv6()
         # Inlined batch with local-bound getrandbits — avoids per-item
@@ -159,20 +147,8 @@ class NetworkProvider(BaseProvider):
             )
         return result
 
-    @overload
-    def mac_address(self) -> str: ...
-    @overload
-    def mac_address(self, count: Literal[1]) -> str: ...
-    @overload
-    def mac_address(self, count: int) -> str | list[str]: ...
     def mac_address(self, count: int = 1) -> str | list[str]:
-        """Generate a random MAC address (e.g. ``"a1:b2:c3:d4:e5:f6"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of addresses to generate.
-        """
+        """Generate a random MAC address (e.g. ``"a1:b2:c3:d4:e5:f6"``)."""
         if count == 1:
             return self._one_mac_address()
         # Inlined batch with local-bound getrandbits
@@ -184,38 +160,14 @@ class NetworkProvider(BaseProvider):
             result.append(f"{h[0:2]}:{h[2:4]}:{h[4:6]}:{h[6:8]}:{h[8:10]}:{h[10:12]}")
         return result
 
-    @overload
-    def port(self) -> int: ...
-    @overload
-    def port(self, count: Literal[1]) -> int: ...
-    @overload
-    def port(self, count: int) -> int | list[int]: ...
     def port(self, count: int = 1) -> int | list[int]:
-        """Generate a random port number (1–65535).
-
-        Parameters
-        ----------
-        count : int
-            Number of ports to generate.
-        """
+        """Generate a random port number (1–65535)."""
         if count == 1:
             return self._engine.random_int(1, 65535)
         return [self._engine.random_int(1, 65535) for _ in range(count)]
 
-    @overload
-    def hostname(self) -> str: ...
-    @overload
-    def hostname(self, count: Literal[1]) -> str: ...
-    @overload
-    def hostname(self, count: int) -> str | list[str]: ...
     def hostname(self, count: int = 1) -> str | list[str]:
-        """Generate a random hostname (e.g. ``"srv-48201.local"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of hostnames to generate.
-        """
+        """Generate a random hostname (e.g. ``"srv-48201.local"``)."""
         if count == 1:
             return self._one_hostname()
         # Inlined batch loop with local-bound choices
@@ -226,56 +178,8 @@ class NetworkProvider(BaseProvider):
             for _ in range(count)
         ]
 
-    @overload
-    def user_agent(self) -> str: ...
-    @overload
-    def user_agent(self, count: Literal[1]) -> str: ...
-    @overload
-    def user_agent(self, count: int) -> str | list[str]: ...
-    def user_agent(self, count: int = 1) -> str | list[str]:
-        """Generate a random User-Agent string.
-
-        Parameters
-        ----------
-        count : int
-            Number of user agent strings to generate.
-        """
-        if count == 1:
-            return self._engine.choice(_USER_AGENTS)
-        return self._engine.choices(_USER_AGENTS, count)
-
-    @overload
-    def http_method(self) -> str: ...
-    @overload
-    def http_method(self, count: Literal[1]) -> str: ...
-    @overload
-    def http_method(self, count: int) -> str | list[str]: ...
-    def http_method(self, count: int = 1) -> str | list[str]:
-        """Generate a random HTTP method (GET, POST, PUT, etc.).
-
-        Parameters
-        ----------
-        count : int
-            Number of methods to generate.
-        """
-        if count == 1:
-            return self._engine.choice(_HTTP_METHODS)
-        return self._engine.choices(_HTTP_METHODS, count)
-
-    @overload
-    def http_status_code(self) -> str: ...
-    @overload
-    def http_status_code(self, count: Literal[1]) -> str: ...
-    @overload
-    def http_status_code(self, count: int) -> str | list[str]: ...
     def http_status_code(self, count: int = 1) -> str | list[str]:
-        """Generate a random HTTP status code with reason (e.g. ``"404 Not Found"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of status codes to generate.
-        """
+        """Generate a random HTTP status code with reason (e.g. ``"404 Not Found"``)."""
         if count == 1:
             code, reason = self._engine.choice(_HTTP_STATUS_CODES)
             return f"{code} {reason}"

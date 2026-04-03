@@ -14,8 +14,6 @@ def locale_forge(request) -> DataForge:
 
 
 class TestLocaleSmoke:
-    """Basic smoke tests for all new English locales."""
-
     def test_person_first_name(self, locale_forge: DataForge) -> None:
         name = locale_forge.person.first_name()
         assert isinstance(name, str) and len(name) > 0
@@ -53,7 +51,6 @@ class TestLocaleSmoke:
         assert isinstance(email, str) and "@" in email
 
     def test_schema_integration(self, locale_forge: DataForge) -> None:
-        """Schema should work with locale-specific data."""
         schema = locale_forge.schema(
             ["first_name", "last_name", "email", "city", "phone_number"]
         )
@@ -66,8 +63,6 @@ class TestLocaleSmoke:
 
 
 class TestEnGB:
-    """en_GB specific tests."""
-
     @pytest.fixture
     def forge(self) -> DataForge:
         return DataForge(locale="en_GB", seed=42)
@@ -81,7 +76,6 @@ class TestEnGB:
         assert isinstance(name, str) and len(name) > 0
 
     def test_uk_email_domain(self, forge: DataForge) -> None:
-        """At least some emails should use UK domains."""
         emails = forge.internet.email(count=500)
         uk_domains = [e for e in emails if ".co.uk" in e or ".uk" in e]
         assert len(uk_domains) > 0, "Expected some UK email domains"
@@ -94,14 +88,11 @@ class TestEnGB:
 
 
 class TestEnAU:
-    """en_AU specific tests."""
-
     @pytest.fixture
     def forge(self) -> DataForge:
         return DataForge(locale="en_AU", seed=42)
 
     def test_au_states(self, forge: DataForge) -> None:
-        """Australian states should be short abbreviations."""
         from dataforge.locales.en_AU.address import states
 
         assert "NSW" in states
@@ -116,8 +107,6 @@ class TestEnAU:
 
 
 class TestEnCA:
-    """en_CA specific tests."""
-
     @pytest.fixture
     def forge(self) -> DataForge:
         return DataForge(locale="en_CA", seed=42)
@@ -136,7 +125,6 @@ class TestEnCA:
         assert len(ca_domains) > 0, "Expected some CA email domains"
 
     def test_french_canadian_names(self, forge: DataForge) -> None:
-        """Canadian last names should include French-Canadian names."""
         from dataforge.locales.en_CA.person import last_names
 
         french_names = {"Tremblay", "Roy", "Gagnon", "Bouchard", "Gauthier"}

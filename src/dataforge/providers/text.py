@@ -1,7 +1,5 @@
 """Text provider — paragraphs, headlines, slugs, quotes, etc."""
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
 _QUOTE_AUTHORS: tuple[str, ...] = (
@@ -20,11 +18,6 @@ _QUOTE_AUTHORS: tuple[str, ...] = (
     "William Shakespeare",
     "Maya Angelou",
     "Nelson Mandela",
-    "Theodore Roosevelt",
-    "Steve Jobs",
-    "Walt Disney",
-    "Thomas Edison",
-    "Nikola Tesla",
 )
 
 _QUOTE_TEMPLATES: tuple[str, ...] = (
@@ -76,11 +69,6 @@ _HEADLINE_TOPICS: tuple[str, ...] = (
     "Transportation Infrastructure Bill Advances",
     "Mental Health Awareness Campaign Launches",
     "Digital Privacy Regulations Proposed",
-    "Agricultural Innovation Addresses Food Security",
-    "Marine Conservation Efforts Expand",
-    "Quantum Computing Research Progresses",
-    "Public Health Initiative Gains Momentum",
-    "Urban Development Plans Spark Debate",
 )
 
 _BUZZWORDS: tuple[str, ...] = (
@@ -99,16 +87,6 @@ _BUZZWORDS: tuple[str, ...] = (
     "Internet of Things",
     "edge computing",
     "deep learning",
-    "containerization",
-    "serverless",
-    "zero trust",
-    "Web3",
-    "metaverse",
-    "sustainability",
-    "circular economy",
-    "stakeholder alignment",
-    "value proposition",
-    "growth hacking",
 )
 
 _TEXT_WORDS: tuple[str, ...] = (
@@ -162,56 +140,6 @@ _TEXT_WORDS: tuple[str, ...] = (
     "which",
     "go",
     "me",
-    "when",
-    "make",
-    "can",
-    "like",
-    "time",
-    "no",
-    "just",
-    "him",
-    "know",
-    "take",
-    "people",
-    "into",
-    "year",
-    "your",
-    "good",
-    "some",
-    "could",
-    "them",
-    "see",
-    "other",
-    "than",
-    "then",
-    "now",
-    "look",
-    "only",
-    "come",
-    "its",
-    "over",
-    "think",
-    "also",
-    "back",
-    "after",
-    "use",
-    "two",
-    "how",
-    "our",
-    "work",
-    "first",
-    "well",
-    "way",
-    "even",
-    "new",
-    "want",
-    "because",
-    "any",
-    "these",
-    "give",
-    "day",
-    "most",
-    "us",
 )
 
 
@@ -230,7 +158,9 @@ class TextProvider(BaseProvider):
         "text_block": "text_block",
     }
 
-    # --- Scalar helpers ---
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "buzzword": _BUZZWORDS,
+    }
 
     def _one_quote(self) -> str:
         quote = self._engine.choice(_QUOTE_TEMPLATES)
@@ -261,61 +191,26 @@ class TextProvider(BaseProvider):
         para_count = self._engine.random_int(2, 5)
         return "\n\n".join(self._one_paragraph() for _ in range(para_count))
 
-    # --- Public API ---
-
-    @overload
-    def quote(self) -> str: ...
-    @overload
-    def quote(self, count: Literal[1]) -> str: ...
-    @overload
-    def quote(self, count: int) -> str | list[str]: ...
     def quote(self, count: int = 1) -> str | list[str]:
         """Generate a fake quote with attribution."""
         if count == 1:
             return self._one_quote()
-        # Batch: generate all quotes and authors in bulk
         _quotes = self._engine.choices(_QUOTE_TEMPLATES, count)
         _authors = self._engine.choices(_QUOTE_AUTHORS, count)
         return [f'"{q}" — {a}' for q, a in zip(_quotes, _authors)]
 
-    @overload
-    def headline(self) -> str: ...
-    @overload
-    def headline(self, count: Literal[1]) -> str: ...
-    @overload
-    def headline(self, count: int) -> str | list[str]: ...
     def headline(self, count: int = 1) -> str | list[str]:
         """Generate a news-style headline."""
         if count == 1:
             return self._one_headline()
-        # Batch: generate all starters and topics in bulk
         _starters = self._engine.choices(_HEADLINE_STARTERS, count)
         _topics = self._engine.choices(_HEADLINE_TOPICS, count)
         return [f"{s} {t}" for s, t in zip(_starters, _topics)]
 
-    @overload
-    def buzzword(self) -> str: ...
-    @overload
-    def buzzword(self, count: Literal[1]) -> str: ...
-    @overload
-    def buzzword(self, count: int) -> str | list[str]: ...
-    def buzzword(self, count: int = 1) -> str | list[str]:
-        """Generate a business/tech buzzword."""
-        if count == 1:
-            return self._engine.choice(_BUZZWORDS)
-        return self._engine.choices(_BUZZWORDS, count)
-
-    @overload
-    def paragraph(self) -> str: ...
-    @overload
-    def paragraph(self, count: Literal[1]) -> str: ...
-    @overload
-    def paragraph(self, count: int) -> str | list[str]: ...
     def paragraph(self, count: int = 1) -> str | list[str]:
         """Generate a random paragraph of sentences."""
         if count == 1:
             return self._one_paragraph()
-        # Inlined batch with local-bound helpers
         _choices = self._engine.choices
         _ri = self._engine.random_int
         _words = _TEXT_WORDS
@@ -332,17 +227,10 @@ class TextProvider(BaseProvider):
             result.append(_join(sentences))
         return result
 
-    @overload
-    def text_block(self) -> str: ...
-    @overload
-    def text_block(self, count: Literal[1]) -> str: ...
-    @overload
-    def text_block(self, count: int) -> str | list[str]: ...
     def text_block(self, count: int = 1) -> str | list[str]:
         """Generate a multi-paragraph text block."""
         if count == 1:
             return self._one_text_block()
-        # Inlined batch with local-bound helpers
         _choices = self._engine.choices
         _ri = self._engine.random_int
         _words = _TEXT_WORDS

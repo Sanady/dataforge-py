@@ -5,9 +5,7 @@ import pytest
 from dataforge import DataForge, RelationalSchema
 
 
-# =====================================================================
 # Fixtures
-# =====================================================================
 
 
 @pytest.fixture
@@ -16,16 +14,11 @@ def forge() -> DataForge:
     return DataForge(locale="en_US", seed=42)
 
 
-# =====================================================================
 # unique_together — Schema constraint
-# =====================================================================
 
 
 class TestUniqueTogether:
-    """Tests for the unique_together constraint on Schema."""
-
     def test_basic_unique_together(self, forge: DataForge) -> None:
-        """Pairs of (first_name, last_name) should be unique."""
         schema = forge.schema(
             ["first_name", "last_name", "email"],
             unique_together=[("first_name", "last_name")],
@@ -35,7 +28,6 @@ class TestUniqueTogether:
         assert len(pairs) == len(set(pairs))
 
     def test_unique_together_single_column(self, forge: DataForge) -> None:
-        """unique_together with a single column acts like 'unique'."""
         schema = forge.schema(
             ["city", "state"],
             unique_together=[("city",)],
@@ -45,7 +37,6 @@ class TestUniqueTogether:
         assert len(cities) == len(set(cities))
 
     def test_unique_together_multiple_groups(self, forge: DataForge) -> None:
-        """Multiple unique_together groups should all be enforced."""
         schema = forge.schema(
             ["first_name", "last_name", "city", "state"],
             unique_together=[
@@ -60,7 +51,6 @@ class TestUniqueTogether:
         assert len(city_pairs) == len(set(city_pairs))
 
     def test_unique_together_with_null_fields(self, forge: DataForge) -> None:
-        """unique_together should work alongside null_fields."""
         schema = forge.schema(
             ["first_name", "last_name", "email"],
             null_fields={"email": 0.3},
@@ -76,7 +66,6 @@ class TestUniqueTogether:
         assert null_count >= 0  # just ensure it doesn't crash
 
     def test_unique_together_invalid_column(self, forge: DataForge) -> None:
-        """Should raise ValueError for unknown column names."""
         with pytest.raises(ValueError, match="unique_together column 'nonexistent'"):
             forge.schema(
                 ["first_name", "email"],
@@ -84,7 +73,6 @@ class TestUniqueTogether:
             )
 
     def test_unique_together_count_zero(self, forge: DataForge) -> None:
-        """Generating zero rows with unique_together should return []."""
         schema = forge.schema(
             ["first_name", "last_name"],
             unique_together=[("first_name", "last_name")],
@@ -93,7 +81,6 @@ class TestUniqueTogether:
         assert rows == []
 
     def test_unique_together_count_one(self, forge: DataForge) -> None:
-        """Generating one row with unique_together should work."""
         schema = forge.schema(
             ["first_name", "last_name"],
             unique_together=[("first_name", "last_name")],
@@ -103,7 +90,6 @@ class TestUniqueTogether:
         assert "first_name" in rows[0]
 
     def test_unique_together_preserves_row_count(self, forge: DataForge) -> None:
-        """Should always return exactly the requested number of rows."""
         schema = forge.schema(
             ["first_name", "last_name", "email"],
             unique_together=[("first_name", "last_name")],
@@ -113,7 +99,6 @@ class TestUniqueTogether:
             assert len(rows) == count
 
     def test_unique_together_with_lambdas(self, forge: DataForge) -> None:
-        """unique_together should work with lambda/computed fields."""
         schema = forge.schema(
             {
                 "first_name": "first_name",
@@ -130,7 +115,6 @@ class TestUniqueTogether:
             assert row["full"] == f"{row['first_name']} {row['last_name']}"
 
     def test_schema_repr_unchanged(self, forge: DataForge) -> None:
-        """Schema repr should still work with unique_together."""
         schema = forge.schema(
             ["first_name", "email"],
             unique_together=[("first_name",)],
@@ -138,16 +122,11 @@ class TestUniqueTogether:
         assert "Schema" in repr(schema)
 
 
-# =====================================================================
 # RelationalSchema — multi-table data generation
-# =====================================================================
 
 
 class TestRelationalSchemaBasic:
-    """Basic RelationalSchema tests."""
-
     def test_single_table(self, forge: DataForge) -> None:
-        """A single table with no relationships should work."""
         rel = forge.relational(
             {
                 "users": {
@@ -167,7 +146,6 @@ class TestRelationalSchemaBasic:
         assert "email" in row
 
     def test_auto_increment_ids(self, forge: DataForge) -> None:
-        """IDs should be 1-based auto-incrementing integers."""
         rel = forge.relational(
             {
                 "users": {
@@ -181,7 +159,6 @@ class TestRelationalSchemaBasic:
         assert ids == list(range(1, 11))
 
     def test_default_count(self, forge: DataForge) -> None:
-        """Default count should be 10 when not specified."""
         rel = forge.relational(
             {
                 "users": {
@@ -194,10 +171,7 @@ class TestRelationalSchemaBasic:
 
 
 class TestRelationalSchemaParentChild:
-    """Tests for parent-child FK relationships."""
-
     def test_simple_parent_child(self, forge: DataForge) -> None:
-        """Child table should have FK column referencing parent IDs."""
         rel = forge.relational(
             {
                 "users": {
@@ -221,7 +195,6 @@ class TestRelationalSchemaParentChild:
             assert order["users_id"] in parent_ids
 
     def test_custom_parent_key(self, forge: DataForge) -> None:
-        """Custom parent_key should be used as the FK column name."""
         rel = forge.relational(
             {
                 "users": {
@@ -243,7 +216,6 @@ class TestRelationalSchemaParentChild:
             assert order["user_id"] in parent_ids
 
     def test_three_level_hierarchy(self, forge: DataForge) -> None:
-        """Three-level hierarchy: users → orders → order_items."""
         rel = forge.relational(
             {
                 "users": {
@@ -278,7 +250,6 @@ class TestRelationalSchemaParentChild:
             assert item["order_id"] in order_ids
 
     def test_referential_integrity(self, forge: DataForge) -> None:
-        """Every FK value must point to an existing parent ID."""
         rel = forge.relational(
             {
                 "departments": {
@@ -299,7 +270,6 @@ class TestRelationalSchemaParentChild:
             assert emp["dept_id"] in dept_ids
 
     def test_dict_fields_spec(self, forge: DataForge) -> None:
-        """Fields can be specified as a dict with column renaming."""
         rel = forge.relational(
             {
                 "products": {
@@ -320,10 +290,7 @@ class TestRelationalSchemaParentChild:
 
 
 class TestRelationalSchemaCardinality:
-    """Tests for children_per_parent cardinality bounds."""
-
     def test_bounded_cardinality(self, forge: DataForge) -> None:
-        """Each parent should get between min and max children."""
         rel = forge.relational(
             {
                 "users": {
@@ -353,7 +320,6 @@ class TestRelationalSchemaCardinality:
             assert count >= 0  # sanity check — some parents may get 0 if total is tight
 
     def test_cardinality_one_to_one(self, forge: DataForge) -> None:
-        """(1, 1) cardinality — each parent gets exactly one child."""
         rel = forge.relational(
             {
                 "users": {
@@ -379,10 +345,7 @@ class TestRelationalSchemaCardinality:
 
 
 class TestRelationalSchemaTopologicalSort:
-    """Tests for topological ordering and error handling."""
-
     def test_topological_order(self, forge: DataForge) -> None:
-        """Tables should be generated parents-first."""
         rel = forge.relational(
             {
                 "order_items": {
@@ -410,7 +373,6 @@ class TestRelationalSchemaTopologicalSort:
         assert len(data["order_items"]) == 10
 
     def test_circular_dependency_raises(self, forge: DataForge) -> None:
-        """Circular references should raise ValueError."""
         with pytest.raises(ValueError, match="Circular dependency"):
             forge.relational(
                 {
@@ -428,7 +390,6 @@ class TestRelationalSchemaTopologicalSort:
             )
 
     def test_undefined_parent_raises(self, forge: DataForge) -> None:
-        """Referencing a non-existent parent should raise ValueError."""
         with pytest.raises(ValueError, match="references parent 'nonexistent'"):
             forge.relational(
                 {
@@ -441,7 +402,6 @@ class TestRelationalSchemaTopologicalSort:
             )
 
     def test_multiple_children_same_parent(self, forge: DataForge) -> None:
-        """Multiple child tables can reference the same parent."""
         rel = forge.relational(
             {
                 "users": {
@@ -471,10 +431,7 @@ class TestRelationalSchemaTopologicalSort:
 
 
 class TestRelationalSchemaSQLOutput:
-    """Tests for RelationalSchema.to_sql() output."""
-
     def test_to_sql_basic(self, forge: DataForge) -> None:
-        """to_sql() should return valid INSERT statements."""
         rel = forge.relational(
             {
                 "users": {
@@ -490,7 +447,6 @@ class TestRelationalSchemaSQLOutput:
         assert '"email"' in sql
 
     def test_to_sql_parent_child(self, forge: DataForge) -> None:
-        """SQL output should include both parent and child tables."""
         rel = forge.relational(
             {
                 "users": {
@@ -514,7 +470,6 @@ class TestRelationalSchemaSQLOutput:
         assert users_pos < orders_pos
 
     def test_to_sql_mysql_dialect(self, forge: DataForge) -> None:
-        """MySQL dialect should use backtick quoting."""
         rel = forge.relational(
             {
                 "users": {
@@ -529,7 +484,6 @@ class TestRelationalSchemaSQLOutput:
         assert "`first_name`" in sql
 
     def test_to_sql_null_values(self, forge: DataForge) -> None:
-        """SQL output should render None as NULL."""
         rel = forge.relational(
             {
                 "users": {
@@ -544,8 +498,6 @@ class TestRelationalSchemaSQLOutput:
 
 
 class TestRelationalSchemaRepr:
-    """Test __repr__ method."""
-
     def test_repr(self, forge: DataForge) -> None:
         rel = forge.relational(
             {
@@ -560,10 +512,7 @@ class TestRelationalSchemaRepr:
 
 
 class TestRelationalSchemaWithNullFields:
-    """Tests for null_fields integration in relational schemas."""
-
     def test_null_fields_in_child_table(self, forge: DataForge) -> None:
-        """null_fields should work in child table specs."""
         rel = forge.relational(
             {
                 "users": {
@@ -585,16 +534,11 @@ class TestRelationalSchemaWithNullFields:
         assert null_cities >= 0  # just ensure it doesn't crash
 
 
-# =====================================================================
 # Integration: forge.relational() convenience method
-# =====================================================================
 
 
 class TestForgeRelationalMethod:
-    """Tests for the DataForge.relational() convenience method."""
-
     def test_returns_relational_schema(self, forge: DataForge) -> None:
-        """forge.relational() should return a RelationalSchema."""
         rel = forge.relational(
             {
                 "users": {"fields": ["first_name"], "count": 5},
@@ -603,7 +547,6 @@ class TestForgeRelationalMethod:
         assert isinstance(rel, RelationalSchema)
 
     def test_generate_via_forge(self, forge: DataForge) -> None:
-        """Should be able to generate data via the convenience method."""
         rel = forge.relational(
             {
                 "users": {"fields": ["first_name"], "count": 5},
@@ -620,14 +563,10 @@ class TestForgeRelationalMethod:
         assert len(data["orders"]) == 10
 
 
-# =====================================================================
 # Import test
-# =====================================================================
 
 
 class TestImport:
-    """Test that RelationalSchema is importable from the package."""
-
     def test_import_from_package(self) -> None:
         from dataforge import RelationalSchema as RS
 
@@ -639,16 +578,11 @@ class TestImport:
         assert "RelationalSchema" in dataforge.__all__
 
 
-# =====================================================================
 # Edge cases
-# =====================================================================
 
 
 class TestEdgeCases:
-    """Edge cases and boundary conditions."""
-
     def test_empty_parent_table(self, forge: DataForge) -> None:
-        """Child table with zero-row parent should handle gracefully."""
         rel = forge.relational(
             {
                 "users": {
@@ -670,7 +604,6 @@ class TestEdgeCases:
             assert order["user_id"] is None
 
     def test_large_hierarchy(self, forge: DataForge) -> None:
-        """Stress test with a deeper hierarchy."""
         rel = forge.relational(
             {
                 "companies": {
@@ -706,7 +639,6 @@ class TestEdgeCases:
             assert emp["dept_id"] in dept_ids
 
     def test_unique_together_schema_passthrough(self, forge: DataForge) -> None:
-        """unique_together passed through forge.schema() should work."""
         schema = forge.schema(
             ["first_name", "last_name"],
             unique_together=[("first_name", "last_name")],

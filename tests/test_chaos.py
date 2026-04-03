@@ -8,9 +8,7 @@ from dataforge import DataForge
 from dataforge.chaos import ChaosTransformer
 
 
-# ------------------------------------------------------------------
 # Fixtures
-# ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -24,9 +22,7 @@ def sample_rows(forge: DataForge) -> list[dict]:
     return schema.generate(count=100)
 
 
-# ------------------------------------------------------------------
 # ChaosTransformer construction
-# ------------------------------------------------------------------
 
 
 class TestChaosTransformerConstruction:
@@ -58,9 +54,7 @@ class TestChaosTransformerConstruction:
             assert a == b
 
 
-# ------------------------------------------------------------------
 # Null injection
-# ------------------------------------------------------------------
 
 
 class TestNullInjection:
@@ -81,9 +75,7 @@ class TestNullInjection:
         assert null_count == 0
 
 
-# ------------------------------------------------------------------
 # Type mismatch injection
-# ------------------------------------------------------------------
 
 
 class TestTypeMismatch:
@@ -100,9 +92,7 @@ class TestTypeMismatch:
         assert non_str_count > 0
 
 
-# ------------------------------------------------------------------
 # Boundary value injection
-# ------------------------------------------------------------------
 
 
 class TestBoundaryInjection:
@@ -115,9 +105,7 @@ class TestBoundaryInjection:
         assert len(boundary_hits) > 0
 
 
-# ------------------------------------------------------------------
 # Duplicate injection
-# ------------------------------------------------------------------
 
 
 class TestDuplicateInjection:
@@ -128,9 +116,7 @@ class TestDuplicateInjection:
         assert len(result) >= len(sample_rows)
 
 
-# ------------------------------------------------------------------
 # String-specific transformations
-# ------------------------------------------------------------------
 
 
 class TestStringTransformations:
@@ -185,9 +171,7 @@ class TestStringTransformations:
         assert shorter_count > 0
 
 
-# ------------------------------------------------------------------
 # Column targeting
-# ------------------------------------------------------------------
 
 
 class TestColumnTargeting:
@@ -201,9 +185,7 @@ class TestColumnTargeting:
             assert row["city"] is not None
 
 
-# ------------------------------------------------------------------
 # Empty input
-# ------------------------------------------------------------------
 
 
 class TestEdgeCases:
@@ -220,9 +202,7 @@ class TestEdgeCases:
         assert sample_rows == originals
 
 
-# ------------------------------------------------------------------
 # Schema integration
-# ------------------------------------------------------------------
 
 
 class TestChaosSchemaIntegration:

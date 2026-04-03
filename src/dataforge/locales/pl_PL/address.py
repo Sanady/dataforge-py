@@ -45,16 +45,6 @@ street_names: tuple[str, ...] = (
     "Dębowa",
     "Jodłowa",
     "Akacjowa",
-    "Wrzosowa",
-    "Konopnickiej",
-    "Prusa",
-    "Orzeszkowej",
-    "Reymonta",
-    "Matejki",
-    "Bema",
-    "Dąbrowskiego",
-    "Sobieskiego",
-    "Głowackiego",
 )
 
 street_suffixes: tuple[str, ...] = ("",)

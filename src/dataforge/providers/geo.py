@@ -1,7 +1,5 @@
 """Geo provider — coordinates, countries, continents, places, distances."""
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
 _CONTINENTS: tuple[str, ...] = (
@@ -38,11 +36,6 @@ _SEAS: tuple[str, ...] = (
     "North Sea",
     "Baltic Sea",
     "Caspian Sea",
-    "Arabian Sea",
-    "Coral Sea",
-    "Tasman Sea",
-    "Banda Sea",
-    "Timor Sea",
 )
 
 _MOUNTAIN_RANGES: tuple[str, ...] = (
@@ -61,11 +54,6 @@ _MOUNTAIN_RANGES: tuple[str, ...] = (
     "Karakoram",
     "Hindu Kush",
     "Tian Shan",
-    "Kunlun Mountains",
-    "Altai Mountains",
-    "Drakensberg",
-    "Great Dividing Range",
-    "Brooks Range",
 )
 
 _RIVERS: tuple[str, ...] = (
@@ -84,16 +72,6 @@ _RIVERS: tuple[str, ...] = (
     "Niger",
     "Murray",
     "Tocantins",
-    "Volga",
-    "Danube",
-    "Ganges",
-    "Rhine",
-    "Euphrates",
-    "Indus",
-    "Tigris",
-    "Colorado",
-    "Columbia",
-    "Thames",
 )
 
 _COMPASS_DIRECTIONS: tuple[str, ...] = (
@@ -144,7 +122,14 @@ class GeoProvider(BaseProvider):
         "geo_hash": "geo_hash",
     }
 
-    # --- Scalar helpers ---
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "continent": _CONTINENTS,
+        "ocean": _OCEANS,
+        "sea": _SEAS,
+        "mountain_range": _MOUNTAIN_RANGES,
+        "river": _RIVERS,
+        "compass_direction": _COMPASS_DIRECTIONS,
+    }
 
     def _one_geo_coordinate(self) -> str:
         lat = self._engine.random_int(-9000, 9000) / 100.0
@@ -176,157 +161,26 @@ class GeoProvider(BaseProvider):
             bits >>= 5
         return "".join(chars)
 
-    # --- Public API ---
-
-    @overload
-    def continent(self) -> str: ...
-    @overload
-    def continent(self, count: Literal[1]) -> str: ...
-    @overload
-    def continent(self, count: int) -> str | list[str]: ...
-    def continent(self, count: int = 1) -> str | list[str]:
-        """Generate a continent name."""
-        if count == 1:
-            return self._engine.choice(_CONTINENTS)
-        return self._engine.choices(_CONTINENTS, count)
-
-    @overload
-    def ocean(self) -> str: ...
-    @overload
-    def ocean(self, count: Literal[1]) -> str: ...
-    @overload
-    def ocean(self, count: int) -> str | list[str]: ...
-    def ocean(self, count: int = 1) -> str | list[str]:
-        """Generate an ocean name."""
-        if count == 1:
-            return self._engine.choice(_OCEANS)
-        return self._engine.choices(_OCEANS, count)
-
-    @overload
-    def sea(self) -> str: ...
-    @overload
-    def sea(self, count: Literal[1]) -> str: ...
-    @overload
-    def sea(self, count: int) -> str | list[str]: ...
-    def sea(self, count: int = 1) -> str | list[str]:
-        """Generate a sea name."""
-        if count == 1:
-            return self._engine.choice(_SEAS)
-        return self._engine.choices(_SEAS, count)
-
-    @overload
-    def mountain_range(self) -> str: ...
-    @overload
-    def mountain_range(self, count: Literal[1]) -> str: ...
-    @overload
-    def mountain_range(self, count: int) -> str | list[str]: ...
-    def mountain_range(self, count: int = 1) -> str | list[str]:
-        """Generate a mountain range name."""
-        if count == 1:
-            return self._engine.choice(_MOUNTAIN_RANGES)
-        return self._engine.choices(_MOUNTAIN_RANGES, count)
-
-    @overload
-    def river(self) -> str: ...
-    @overload
-    def river(self, count: Literal[1]) -> str: ...
-    @overload
-    def river(self, count: int) -> str | list[str]: ...
-    def river(self, count: int = 1) -> str | list[str]:
-        """Generate a river name."""
-        if count == 1:
-            return self._engine.choice(_RIVERS)
-        return self._engine.choices(_RIVERS, count)
-
-    @overload
-    def compass_direction(self) -> str: ...
-    @overload
-    def compass_direction(self, count: Literal[1]) -> str: ...
-    @overload
-    def compass_direction(self, count: int) -> str | list[str]: ...
-    def compass_direction(self, count: int = 1) -> str | list[str]:
-        """Generate a compass direction (e.g., N, NE, SSW)."""
-        if count == 1:
-            return self._engine.choice(_COMPASS_DIRECTIONS)
-        return self._engine.choices(_COMPASS_DIRECTIONS, count)
-
-    @overload
-    def geo_coordinate(self) -> str: ...
-    @overload
-    def geo_coordinate(self, count: Literal[1]) -> str: ...
-    @overload
-    def geo_coordinate(self, count: int) -> str | list[str]: ...
     def geo_coordinate(self, count: int = 1) -> str | list[str]:
         """Generate a geographic coordinate pair (lat, lon)."""
         if count == 1:
             return self._one_geo_coordinate()
-        # Inlined batch with local binding — avoids method call overhead
-        _ri = self._engine.random_int
-        return [
-            f"{_ri(-9000, 9000) / 100.0:.4f}, {_ri(-18000, 18000) / 100.0:.4f}"
-            for _ in range(count)
-        ]
+        return [self._one_geo_coordinate() for _ in range(count)]
 
-    @overload
-    def dms_latitude(self) -> str: ...
-    @overload
-    def dms_latitude(self, count: Literal[1]) -> str: ...
-    @overload
-    def dms_latitude(self, count: int) -> str | list[str]: ...
     def dms_latitude(self, count: int = 1) -> str | list[str]:
         """Generate a latitude in degrees-minutes-seconds format."""
         if count == 1:
             return self._one_dms_lat()
-        # Inlined batch with local binding
-        _ri = self._engine.random_int
-        _choice = self._engine.choice
-        _dirs = _COORDINATE_DMS_DIRS_LAT
-        return [
-            f"{_ri(0, 90)}°{_ri(0, 59):02d}'{_ri(0, 59):02d}\"{_choice(_dirs)}"
-            for _ in range(count)
-        ]
+        return [self._one_dms_lat() for _ in range(count)]
 
-    @overload
-    def dms_longitude(self) -> str: ...
-    @overload
-    def dms_longitude(self, count: Literal[1]) -> str: ...
-    @overload
-    def dms_longitude(self, count: int) -> str | list[str]: ...
     def dms_longitude(self, count: int = 1) -> str | list[str]:
         """Generate a longitude in degrees-minutes-seconds format."""
         if count == 1:
             return self._one_dms_lon()
-        # Inlined batch with local binding
-        _ri = self._engine.random_int
-        _choice = self._engine.choice
-        _dirs = _COORDINATE_DMS_DIRS_LON
-        return [
-            f"{_ri(0, 180)}°{_ri(0, 59):02d}'{_ri(0, 59):02d}\"{_choice(_dirs)}"
-            for _ in range(count)
-        ]
+        return [self._one_dms_lon() for _ in range(count)]
 
-    @overload
-    def geo_hash(self) -> str: ...
-    @overload
-    def geo_hash(self, count: Literal[1]) -> str: ...
-    @overload
-    def geo_hash(self, count: int) -> str | list[str]: ...
     def geo_hash(self, count: int = 1) -> str | list[str]:
         """Generate a geohash string (base32, 6-12 chars)."""
         if count == 1:
             return self._one_geo_hash()
-        # Inlined batch with local binding — avoids per-item method
-        # call overhead and re-binding _BASE32 inside the loop.
-        _ri = self._engine.random_int
-        _getrandbits = self._engine.getrandbits
-        b32 = _BASE32
-        result: list[str] = []
-        for _ in range(count):
-            length = _ri(6, 12)
-            bits = _getrandbits(length * 5)
-            chars: list[str] = []
-            for _j in range(length):
-                chars.append(b32[bits & 0x1F])
-                bits >>= 5
-            result.append("".join(chars))
-        return result
+        return [self._one_geo_hash() for _ in range(count)]

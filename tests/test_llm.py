@@ -51,7 +51,6 @@ class TestApiKey:
         assert all(len(k) > 40 for k in results)
 
     def test_has_prefix(self) -> None:
-        """API keys should start with a known prefix."""
         prefixes = (
             "sk-",
             "sk-proj-",
@@ -383,7 +382,6 @@ class TestLlmInSchema:
             assert "token_count" in row
 
     def test_schema_all_field_map_entries(self) -> None:
-        """All _field_map entries should be resolvable."""
         fields = [
             "model_name",
             "provider_name",

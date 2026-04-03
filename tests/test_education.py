@@ -9,8 +9,6 @@ from dataforge.providers.education import (
 
 
 class TestEducationScalar:
-    """Tests for single-item education data generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -38,8 +36,6 @@ class TestEducationScalar:
 
 
 class TestEducationBatch:
-    """Tests for batch education data generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -62,7 +58,6 @@ class TestEducationBatch:
         assert all(f in _FIELDS_OF_STUDY for f in result)
 
     def test_variety(self) -> None:
-        """Large batch should include multiple distinct values."""
         result = self.forge.education.university(count=500)
         unique = set(result)
         # With 50 universities, 500 draws should hit many of them

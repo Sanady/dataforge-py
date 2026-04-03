@@ -15,9 +15,7 @@ from dataforge.timeseries import (
 )
 
 
-# ------------------------------------------------------------------
 # Fixtures
-# ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -25,9 +23,7 @@ def forge() -> DataForge:
     return DataForge(locale="en_US", seed=42)
 
 
-# ------------------------------------------------------------------
 # Interval parsing
-# ------------------------------------------------------------------
 
 
 class TestIntervalParsing:
@@ -53,9 +49,7 @@ class TestIntervalParsing:
         assert _parse_interval("15min") == 900
 
 
-# ------------------------------------------------------------------
 # Datetime parsing
-# ------------------------------------------------------------------
 
 
 class TestDatetimeParsing:
@@ -74,9 +68,7 @@ class TestDatetimeParsing:
         assert "2024-06-15" in iso
 
 
-# ------------------------------------------------------------------
 # TimeSeriesSchema creation
-# ------------------------------------------------------------------
 
 
 class TestTimeSeriesSchema:
@@ -113,9 +105,7 @@ class TestTimeSeriesSchema:
         assert "temp" in r
 
 
-# ------------------------------------------------------------------
 # Data generation
-# ------------------------------------------------------------------
 
 
 class TestTimeSeriesGeneration:
@@ -266,9 +256,7 @@ class TestTimeSeriesGeneration:
         assert rows == []
 
 
-# ------------------------------------------------------------------
 # Export methods
-# ------------------------------------------------------------------
 
 
 class TestTimeSeriesExport:
@@ -311,14 +299,11 @@ class TestTimeSeriesExport:
         assert len(rows) == 4
 
 
-# ------------------------------------------------------------------
 # Integration via DataForge.timeseries()
-# ------------------------------------------------------------------
 
 
 class TestDataForgeTimeSeriesMethod:
     def test_timeseries_method_exists(self, forge: DataForge) -> None:
-        """DataForge should have a timeseries() method."""
         assert hasattr(forge, "timeseries")
 
     def test_timeseries_via_forge(self, forge: DataForge) -> None:

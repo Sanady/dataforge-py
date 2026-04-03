@@ -1,28 +1,4 @@
-"""Constraint engine — correlated and conditional field generation.
-
-Enables fields that depend on other fields via geographic correlation,
-temporal ordering, statistical correlation, conditional value pools,
-and range constraints.
-
-The engine builds a dependency DAG, performs topological ordering, and
-uses a two-pass generation strategy:
-  1. Independent fields are generated column-first (fast batch path).
-  2. Dependent fields are generated row-by-row in topological order.
-
-Usage::
-
-    from dataforge import DataForge
-
-    forge = DataForge(seed=42)
-    schema = forge.schema({
-        "country": "country",
-        "state": {"field": "address.state", "depends_on": "country"},
-        "city": {"field": "address.city", "depends_on": "state"},
-        "start_date": "date",
-        "end_date": {"field": "date", "temporal": "after", "reference": "start_date"},
-    })
-    rows = schema.generate(count=1000)
-"""
+"""Constraint engine — correlated and conditional field generation."""
 
 from __future__ import annotations
 
@@ -34,11 +10,6 @@ from typing import Any, TYPE_CHECKING
 if TYPE_CHECKING:
     from dataforge.core import DataForge
     from dataforge.backend import RandomEngine
-
-
-# ------------------------------------------------------------------
-# Constraint types
-# ------------------------------------------------------------------
 
 
 class FieldConstraint:
@@ -62,7 +33,6 @@ class DependsOnConstraint(FieldConstraint):
 
     __slots__ = ("field", "column_name", "depends_on", "dep_type", "_geo_loaded")
 
-    # Class-level cache for geo module references — avoids repeated imports
     _geo_get_cities: Any = None
     _geo_get_states: Any = None
     _geo_get_zip: Any = None
@@ -78,7 +48,6 @@ class DependsOnConstraint(FieldConstraint):
         self.field = field
         self.column_name = column_name
         self.depends_on = depends_on
-        # Detect dependency type from field name
         self.dep_type = self._detect_dep_type(field, depends_on)
         self._geo_loaded = False
 
@@ -149,7 +118,6 @@ class DependsOnConstraint(FieldConstraint):
         if self.dep_type == "currency":
             return cls._geo_currency.get(parent_str, "USD")
 
-        # Generic: fall back to provider method
         provider_attr, method_name = forge._resolve_field(self.field)
         provider = getattr(forge, provider_attr)
         method = getattr(provider, method_name)
@@ -171,7 +139,7 @@ class TemporalConstraint(FieldConstraint):
     ) -> None:
         self.field = field
         self.column_name = column_name
-        self.temporal = temporal  # "before" or "after"
+        self.temporal = temporal
         self.reference = reference
         self.offset_days = offset_days
 
@@ -180,12 +148,10 @@ class TemporalConstraint(FieldConstraint):
     ) -> Any:
         ref_val = row.get(self.reference)
         if ref_val is None:
-            # Fall back to regular generation
             provider_attr, method_name = forge._resolve_field(self.field)
             provider = getattr(forge, provider_attr)
             return getattr(provider, method_name)()
 
-        # Parse reference date
         if isinstance(ref_val, str):
             ref_date = _datetime.date.fromisoformat(ref_val)
         elif isinstance(ref_val, _datetime.datetime):
@@ -200,7 +166,7 @@ class TemporalConstraint(FieldConstraint):
 
         if self.temporal == "after":
             result_date = ref_date + _datetime.timedelta(days=offset)
-        else:  # "before"
+        else:
             result_date = ref_date - _datetime.timedelta(days=offset)
 
         return result_date.isoformat()
@@ -239,8 +205,6 @@ class CorrelateConstraint(FieldConstraint):
         except (ValueError, TypeError):
             return engine.gauss(self.mean, self.std)
 
-        # Cholesky-based correlated generation:
-        # y = rho * x + sqrt(1 - rho^2) * z, where z ~ N(0, 1)
         rho = self.correlation
         z = engine.gauss(0.0, 1.0)
         y = rho * x + _math.sqrt(max(0.0, 1.0 - rho * rho)) * z
@@ -307,8 +271,8 @@ class RangeConstraint(FieldConstraint):
         self.column_name = column_name
         self.min_val = min_val
         self.max_val = max_val
-        self.min_ref = min_ref  # column name for dynamic min
-        self.max_ref = max_ref  # column name for dynamic max
+        self.min_ref = min_ref
+        self.max_ref = max_ref
         self.precision = precision
 
     def generate(
@@ -317,7 +281,6 @@ class RangeConstraint(FieldConstraint):
         lo = self.min_val if self.min_val is not None else 0.0
         hi = self.max_val if self.max_val is not None else 100.0
 
-        # Dynamic bounds from other columns
         if self.min_ref and self.min_ref in row:
             try:
                 lo = float(row[self.min_ref])
@@ -335,29 +298,11 @@ class RangeConstraint(FieldConstraint):
         return engine.random_float(lo, hi, self.precision)
 
 
-# ------------------------------------------------------------------
-# Constraint engine: parse specs and build dependency DAG
-# ------------------------------------------------------------------
-
-
 def parse_field_spec(
     column_name: str,
     spec: dict[str, Any],
 ) -> tuple[FieldConstraint | None, list[str]]:
-    """Parse a dict-based field spec into a constraint and its dependencies.
-
-    Parameters
-    ----------
-    column_name : str
-        The output column name.
-    spec : dict
-        The field specification dict.
-
-    Returns
-    -------
-    tuple[FieldConstraint | None, list[str]]
-        The constraint object and a list of dependency column names.
-    """
+    """Parse a dict-based field spec into a constraint and its dependencies."""
     field = spec.get("field", column_name)
     deps: list[str] = []
 
@@ -416,31 +361,19 @@ def parse_field_spec(
             precision=int(spec.get("precision", 2)),
         ), [x for x in [spec.get("min_ref"), spec.get("max_ref")] if x]
 
-    # No constraint, just a field override
     return None, []
 
 
 def build_dependency_order(
     field_specs: dict[str, Any],
 ) -> tuple[
-    list[str],  # independent columns (batch-able)
-    list[tuple[str, FieldConstraint]],  # dependent columns in topo order
-    dict[str, FieldConstraint],  # constraint map
+    list[str],
+    list[tuple[str, FieldConstraint]],
+    dict[str, FieldConstraint],
 ]:
-    """Build dependency DAG and return generation order.
-
-    Parameters
-    ----------
-    field_specs : dict
-        Column name → field spec (str or dict).
-
-    Returns
-    -------
-    tuple
-        (independent_columns, ordered_dependent, constraint_map)
-    """
+    """Build dependency DAG and return generation order."""
     constraints: dict[str, FieldConstraint] = {}
-    dep_graph: dict[str, list[str]] = {}  # column → [depends_on columns]
+    dep_graph: dict[str, list[str]] = {}
     all_columns = list(field_specs.keys())
 
     for col_name, spec in field_specs.items():
@@ -454,11 +387,9 @@ def build_dependency_order(
         else:
             dep_graph[col_name] = []
 
-    # Separate independent and dependent columns
     dependent_set = set(constraints.keys())
     independent = [c for c in all_columns if c not in dependent_set]
 
-    # Topological sort of dependent columns
     in_degree: dict[str, int] = {c: 0 for c in dependent_set}
     adj: dict[str, list[str]] = {c: [] for c in dependent_set}
 

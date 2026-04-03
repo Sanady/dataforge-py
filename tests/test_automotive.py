@@ -11,8 +11,6 @@ from dataforge.providers.automotive import (
 
 
 class TestAutomotiveScalar:
-    """Tests for single-item automotive data generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -35,7 +33,6 @@ class TestAutomotiveScalar:
             assert len(result) == 17, f"VIN wrong length: {result}"
 
     def test_vin_no_invalid_chars(self) -> None:
-        """VINs must not contain I, O, or Q."""
         for _ in range(100):
             result = self.forge.automotive.vin()
             assert "I" not in result
@@ -43,7 +40,6 @@ class TestAutomotiveScalar:
             assert "Q" not in result
 
     def test_vin_check_digit(self) -> None:
-        """Verify the VIN check digit is computed correctly."""
         from dataforge.providers.automotive import _VIN_TRANSLITERATE, _VIN_WEIGHTS
 
         for _ in range(50):
@@ -91,8 +87,6 @@ class TestAutomotiveScalar:
 
 
 class TestAutomotiveBatch:
-    """Tests for batch automotive data generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 

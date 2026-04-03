@@ -5,13 +5,9 @@ law firm names, judge names, and legal document types.
 All data is stored as immutable ``tuple[str, ...]`` for cache friendliness.
 """
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
-# ------------------------------------------------------------------
 # Data tuples (immutable, module-level for zero per-call overhead)
-# ------------------------------------------------------------------
 
 _COURTS: tuple[str, ...] = (
     "Supreme Court",
@@ -29,11 +25,6 @@ _COURTS: tuple[str, ...] = (
     "Civil Court",
     "Federal Court",
     "Superior Court",
-    "Magistrate Court",
-    "Court of Claims",
-    "Appellate Court",
-    "High Court",
-    "Crown Court",
 )
 
 _PRACTICE_AREAS: tuple[str, ...] = (
@@ -57,16 +48,6 @@ _PRACTICE_AREAS: tuple[str, ...] = (
     "Antitrust Law",
     "Securities Law",
     "Cybersecurity Law",
-    "Entertainment Law",
-    "Sports Law",
-    "Elder Law",
-    "Human Rights Law",
-    "Military Law",
-    "Patent Law",
-    "Trademark Law",
-    "Copyright Law",
-    "Insurance Law",
-    "Health Care Law",
 )
 
 _LEGAL_TERMS: tuple[str, ...] = (
@@ -90,16 +71,6 @@ _LEGAL_TERMS: tuple[str, ...] = (
     "indictment",
     "arraignment",
     "acquittal",
-    "plea bargain",
-    "mistrial",
-    "statute of limitations",
-    "due process",
-    "double jeopardy",
-    "tort",
-    "liability",
-    "negligence",
-    "fiduciary duty",
-    "arbitration",
 )
 
 _DOCUMENT_TYPES: tuple[str, ...] = (
@@ -118,11 +89,6 @@ _DOCUMENT_TYPES: tuple[str, ...] = (
     "Power of Attorney",
     "Will",
     "Trust Agreement",
-    "Non-Disclosure Agreement",
-    "Lease Agreement",
-    "Employment Agreement",
-    "Patent Application",
-    "Court Order",
 )
 
 _FIRM_PREFIXES: tuple[str, ...] = (
@@ -141,11 +107,6 @@ _FIRM_PREFIXES: tuple[str, ...] = (
     "White",
     "Harris",
     "Martin",
-    "Clark",
-    "Lewis",
-    "Walker",
-    "Hall",
-    "Young",
 )
 
 _FIRM_SUFFIXES: tuple[str, ...] = (
@@ -177,11 +138,6 @@ _JUDGE_FIRST: tuple[str, ...] = (
     "Sonia",
     "Sandra",
     "Amy",
-    "Katherine",
-    "Margaret",
-    "Patricia",
-    "Linda",
-    "Susan",
 )
 
 _JUDGE_LAST: tuple[str, ...] = (
@@ -200,11 +156,6 @@ _JUDGE_LAST: tuple[str, ...] = (
     "Kavanaugh",
     "Barrett",
     "Sotomayor",
-    "Alito",
-    "Thomas",
-    "Jackson",
-    "Holmes",
-    "Cardozo",
 )
 
 _CASE_PREFIXES: tuple[str, ...] = (
@@ -251,9 +202,14 @@ class LegalProvider(BaseProvider):
         "verdict": "verdict",
     }
 
-    # ------------------------------------------------------------------
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "court": _COURTS,
+        "practice_area": _PRACTICE_AREAS,
+        "legal_term": _LEGAL_TERMS,
+        "document_type": _DOCUMENT_TYPES,
+    }
+
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_case_number(self) -> str:
         """Generate a single case number (e.g. ``"CV-2024-003847"``)."""
@@ -274,182 +230,28 @@ class LegalProvider(BaseProvider):
         choice = self._engine._rng.choice
         return f"Hon. {choice(_JUDGE_FIRST)} {choice(_JUDGE_LAST)}"
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    # Public API — custom methods
 
-    @overload
-    def case_number(self) -> str: ...
-    @overload
-    def case_number(self, count: Literal[1]) -> str: ...
-    @overload
-    def case_number(self, count: int) -> str | list[str]: ...
     def case_number(self, count: int = 1) -> str | list[str]:
-        """Generate a case number (e.g. ``"CV-2024-003847"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of case numbers to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a case number (e.g. ``"CV-2024-003847"``)."""
         if count == 1:
             return self._one_case_number()
         return [self._one_case_number() for _ in range(count)]
 
-    @overload
-    def court(self) -> str: ...
-    @overload
-    def court(self, count: Literal[1]) -> str: ...
-    @overload
-    def court(self, count: int) -> str | list[str]: ...
-    def court(self, count: int = 1) -> str | list[str]:
-        """Generate a court name (e.g. ``"Supreme Court"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of court names to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_COURTS)
-        return self._engine.choices(_COURTS, count)
-
-    @overload
-    def practice_area(self) -> str: ...
-    @overload
-    def practice_area(self, count: Literal[1]) -> str: ...
-    @overload
-    def practice_area(self, count: int) -> str | list[str]: ...
-    def practice_area(self, count: int = 1) -> str | list[str]:
-        """Generate a legal practice area (e.g. ``"Corporate Law"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of practice areas to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_PRACTICE_AREAS)
-        return self._engine.choices(_PRACTICE_AREAS, count)
-
-    @overload
-    def legal_term(self) -> str: ...
-    @overload
-    def legal_term(self, count: Literal[1]) -> str: ...
-    @overload
-    def legal_term(self, count: int) -> str | list[str]: ...
-    def legal_term(self, count: int = 1) -> str | list[str]:
-        """Generate a legal term (e.g. ``"habeas corpus"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of legal terms to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_LEGAL_TERMS)
-        return self._engine.choices(_LEGAL_TERMS, count)
-
-    @overload
-    def document_type(self) -> str: ...
-    @overload
-    def document_type(self, count: Literal[1]) -> str: ...
-    @overload
-    def document_type(self, count: int) -> str | list[str]: ...
-    def document_type(self, count: int = 1) -> str | list[str]:
-        """Generate a legal document type (e.g. ``"Affidavit"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of document types to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_DOCUMENT_TYPES)
-        return self._engine.choices(_DOCUMENT_TYPES, count)
-
-    @overload
-    def law_firm(self) -> str: ...
-    @overload
-    def law_firm(self, count: Literal[1]) -> str: ...
-    @overload
-    def law_firm(self, count: int) -> str | list[str]: ...
     def law_firm(self, count: int = 1) -> str | list[str]:
-        """Generate a law firm name (e.g. ``"Smith & Associates"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of law firm names to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a law firm name (e.g. ``"Smith & Associates"``)."""
         if count == 1:
             return self._one_law_firm()
         return [self._one_law_firm() for _ in range(count)]
 
-    @overload
-    def judge(self) -> str: ...
-    @overload
-    def judge(self, count: Literal[1]) -> str: ...
-    @overload
-    def judge(self, count: int) -> str | list[str]: ...
     def judge(self, count: int = 1) -> str | list[str]:
-        """Generate a judge name (e.g. ``"Hon. Robert Marshall"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of judge names to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a judge name (e.g. ``"Hon. Robert Marshall"``)."""
         if count == 1:
             return self._one_judge()
         return [self._one_judge() for _ in range(count)]
 
-    @overload
-    def verdict(self) -> str: ...
-    @overload
-    def verdict(self, count: Literal[1]) -> str: ...
-    @overload
-    def verdict(self, count: int) -> str | list[str]: ...
     def verdict(self, count: int = 1) -> str | list[str]:
-        """Generate a verdict (e.g. ``"Guilty"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of verdicts to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a verdict (e.g. ``"Guilty"``)."""
         verdicts = ("Guilty", "Not Guilty", "Dismissed", "Settled", "Mistrial")
         if count == 1:
             return self._engine.choice(verdicts)

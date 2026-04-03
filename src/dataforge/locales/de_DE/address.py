@@ -41,16 +41,6 @@ street_names: tuple[str, ...] = (
     "Mond",
     "Stern",
     "Morgen",
-    "Abend",
-    "Nord",
-    "Süd",
-    "Ost",
-    "West",
-    "Berg",
-    "Tal",
-    "See",
-    "Fluss",
-    "Park",
 )
 
 street_suffixes: tuple[str, ...] = (

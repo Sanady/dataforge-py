@@ -1,7 +1,6 @@
 """Phone provider — generates fake phone and cell numbers."""
 
 from types import ModuleType
-from typing import Literal, overload
 
 from dataforge.backend import RandomEngine
 from dataforge.providers.base import BaseProvider
@@ -34,9 +33,7 @@ class PhoneProvider(BaseProvider):
         self._phone_formats: tuple[str, ...] = locale_data.phone_formats
         self._cell_formats: tuple[str, ...] = locale_data.cell_formats
 
-    # ------------------------------------------------------------------
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_phone(self) -> str:
         fmt = self._engine.choice(self._phone_formats)
@@ -46,42 +43,16 @@ class PhoneProvider(BaseProvider):
         fmt = self._engine.choice(self._cell_formats)
         return self._engine.numerify(fmt)
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
-    @overload
-    def phone_number(self) -> str: ...
-    @overload
-    def phone_number(self, count: Literal[1]) -> str: ...
-    @overload
-    def phone_number(self, count: int) -> str | list[str]: ...
     def phone_number(self, count: int = 1) -> str | list[str]:
-        """Generate a random phone number.
-
-        Parameters
-        ----------
-        count : int
-            Number of phone numbers to generate.
-        """
+        """Generate a random phone number."""
         if count == 1:
             return self._one_phone()
         return [self._one_phone() for _ in range(count)]
 
-    @overload
-    def cell_phone(self) -> str: ...
-    @overload
-    def cell_phone(self, count: Literal[1]) -> str: ...
-    @overload
-    def cell_phone(self, count: int) -> str | list[str]: ...
     def cell_phone(self, count: int = 1) -> str | list[str]:
-        """Generate a random cell phone number.
-
-        Parameters
-        ----------
-        count : int
-            Number of cell phone numbers to generate.
-        """
+        """Generate a random cell phone number."""
         if count == 1:
             return self._one_cell()
         return [self._one_cell() for _ in range(count)]

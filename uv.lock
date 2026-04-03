@@ -36,7 +36,7 @@ wheels = [
 
 [[package]]
 name = "dataforge-py"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 
 [package.optional-dependencies]
@@ -83,7 +83,7 @@ provides-extras = ["kafka", "rabbitmq", "tui", "db", "all"]
 dev = [
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
-    { name = "ruff", specifier = ">=0.9" },
+    { name = "ruff", specifier = ">=0.15.4,<0.16" },
 ]
 
 [[package]]

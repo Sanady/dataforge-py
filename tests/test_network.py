@@ -6,8 +6,6 @@ from dataforge import DataForge
 
 
 class TestNetworkScalar:
-    """Tests for single-item network generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -85,8 +83,6 @@ class TestNetworkScalar:
 
 
 class TestNetworkBatch:
-    """Tests for batch network generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 

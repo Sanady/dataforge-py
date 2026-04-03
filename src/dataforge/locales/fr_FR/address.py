@@ -41,16 +41,6 @@ street_names: tuple[str, ...] = (
     "Stendhal",
     "Maupassant",
     "Proust",
-    "Colette",
-    "George Sand",
-    "Simone de Beauvoir",
-    "Marie Curie",
-    "Vercingétorix",
-    "Charlemagne",
-    "Henri IV",
-    "Louis XIV",
-    "Napoléon",
-    "Jeanne d'Arc",
 )
 
 street_suffixes: tuple[str, ...] = (

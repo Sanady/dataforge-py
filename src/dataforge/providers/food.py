@@ -5,13 +5,9 @@ dietary tags, beverages, and cooking methods.
 All data is stored as immutable ``tuple[str, ...]`` for cache friendliness.
 """
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
-# ------------------------------------------------------------------
 # Data tuples (immutable, module-level for zero per-call overhead)
-# ------------------------------------------------------------------
 
 _DISHES: tuple[str, ...] = (
     "Spaghetti Carbonara",
@@ -34,26 +30,6 @@ _DISHES: tuple[str, ...] = (
     "Ceviche",
     "Beef Wellington",
     "Tom Yum Soup",
-    "Croissant",
-    "Shakshuka",
-    "Butter Chicken",
-    "Risotto",
-    "Lasagna",
-    "Gyoza",
-    "Empanada",
-    "Poutine",
-    "Borscht",
-    "Naan Bread",
-    "Kimchi Fried Rice",
-    "Churros",
-    "Baklava",
-    "Tiramisu",
-    "Creme Brulee",
-    "Banoffee Pie",
-    "Eggs Benedict",
-    "Club Sandwich",
-    "Lobster Bisque",
-    "Beef Stroganoff",
 )
 
 _CUISINES: tuple[str, ...] = (
@@ -77,16 +53,6 @@ _CUISINES: tuple[str, ...] = (
     "Indonesian",
     "Caribbean",
     "American",
-    "British",
-    "German",
-    "Russian",
-    "Australian",
-    "Filipino",
-    "Malaysian",
-    "Portuguese",
-    "Argentine",
-    "Egyptian",
-    "Scandinavian",
 )
 
 _INGREDIENTS: tuple[str, ...] = (
@@ -110,26 +76,6 @@ _INGREDIENTS: tuple[str, ...] = (
     "Cheese",
     "Egg",
     "Flour",
-    "Sugar",
-    "Salt",
-    "Pepper",
-    "Lemon",
-    "Lime",
-    "Avocado",
-    "Mushroom",
-    "Bell Pepper",
-    "Spinach",
-    "Broccoli",
-    "Coconut Milk",
-    "Soy Sauce",
-    "Cumin",
-    "Paprika",
-    "Cinnamon",
-    "Oregano",
-    "Thyme",
-    "Rosemary",
-    "Parsley",
-    "Chili Flakes",
 )
 
 _RESTAURANT_ADJECTIVES: tuple[str, ...] = (
@@ -148,11 +94,6 @@ _RESTAURANT_ADJECTIVES: tuple[str, ...] = (
     "Secret",
     "Hidden",
     "Rustic",
-    "Urban",
-    "Coastal",
-    "Mountain",
-    "Garden",
-    "Sunset",
 )
 
 _RESTAURANT_NOUNS: tuple[str, ...] = (
@@ -171,11 +112,6 @@ _RESTAURANT_NOUNS: tuple[str, ...] = (
     "Garden",
     "Market",
     "Corner",
-    "Terrace",
-    "Harbor",
-    "Cellar",
-    "Palace",
-    "Pantry",
 )
 
 _DIETARY_TAGS: tuple[str, ...] = (
@@ -194,11 +130,6 @@ _DIETARY_TAGS: tuple[str, ...] = (
     "Sugar-Free",
     "Whole30",
     "Mediterranean",
-    "Raw",
-    "Plant-Based",
-    "Lactose-Free",
-    "Soy-Free",
-    "Low-Sodium",
 )
 
 _BEVERAGES: tuple[str, ...] = (
@@ -217,11 +148,6 @@ _BEVERAGES: tuple[str, ...] = (
     "Sparkling Water",
     "Kombucha",
     "Matcha",
-    "Chai Latte",
-    "Fresh Juice",
-    "Agua Fresca",
-    "Mojito",
-    "Sangria",
 )
 
 _COOKING_METHODS: tuple[str, ...] = (
@@ -240,11 +166,6 @@ _COOKING_METHODS: tuple[str, ...] = (
     "Deep-Fried",
     "Pan-Seared",
     "Slow-Cooked",
-    "Sous Vide",
-    "Gratin",
-    "Flambeed",
-    "Pickled",
-    "Fermented",
 )
 
 
@@ -279,198 +200,37 @@ class FoodProvider(BaseProvider):
         "meal_price": "meal_price",
     }
 
-    # ------------------------------------------------------------------
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "dish": _DISHES,
+        "cuisine": _CUISINES,
+        "ingredient": _INGREDIENTS,
+        "dietary_tag": _DIETARY_TAGS,
+        "beverage": _BEVERAGES,
+        "cooking_method": _COOKING_METHODS,
+    }
+
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_restaurant(self) -> str:
-        """Generate a single restaurant name."""
         choice = self._engine._rng.choice
         return f"The {choice(_RESTAURANT_ADJECTIVES)} {choice(_RESTAURANT_NOUNS)}"
 
     def _one_meal_price(self) -> str:
-        """Generate a single meal price string."""
         ri = self._engine.random_int
         dollars = ri(5, 75)
         cents = ri(0, 99)
         return f"${dollars}.{cents:02d}"
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    # Public API — custom methods
 
-    @overload
-    def dish(self) -> str: ...
-    @overload
-    def dish(self, count: Literal[1]) -> str: ...
-    @overload
-    def dish(self, count: int) -> str | list[str]: ...
-    def dish(self, count: int = 1) -> str | list[str]:
-        """Generate a dish name (e.g. ``"Pad Thai"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of dish names to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_DISHES)
-        return self._engine.choices(_DISHES, count)
-
-    @overload
-    def cuisine(self) -> str: ...
-    @overload
-    def cuisine(self, count: Literal[1]) -> str: ...
-    @overload
-    def cuisine(self, count: int) -> str | list[str]: ...
-    def cuisine(self, count: int = 1) -> str | list[str]:
-        """Generate a cuisine type (e.g. ``"Italian"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of cuisine types to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_CUISINES)
-        return self._engine.choices(_CUISINES, count)
-
-    @overload
-    def ingredient(self) -> str: ...
-    @overload
-    def ingredient(self, count: Literal[1]) -> str: ...
-    @overload
-    def ingredient(self, count: int) -> str | list[str]: ...
-    def ingredient(self, count: int = 1) -> str | list[str]:
-        """Generate an ingredient name (e.g. ``"Garlic"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of ingredients to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_INGREDIENTS)
-        return self._engine.choices(_INGREDIENTS, count)
-
-    @overload
-    def restaurant(self) -> str: ...
-    @overload
-    def restaurant(self, count: Literal[1]) -> str: ...
-    @overload
-    def restaurant(self, count: int) -> str | list[str]: ...
     def restaurant(self, count: int = 1) -> str | list[str]:
-        """Generate a restaurant name (e.g. ``"The Golden Kitchen"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of restaurant names to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a restaurant name (e.g. ``"The Golden Kitchen"``)."""
         if count == 1:
             return self._one_restaurant()
         return [self._one_restaurant() for _ in range(count)]
 
-    @overload
-    def dietary_tag(self) -> str: ...
-    @overload
-    def dietary_tag(self, count: Literal[1]) -> str: ...
-    @overload
-    def dietary_tag(self, count: int) -> str | list[str]: ...
-    def dietary_tag(self, count: int = 1) -> str | list[str]:
-        """Generate a dietary tag (e.g. ``"Vegan"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of dietary tags to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_DIETARY_TAGS)
-        return self._engine.choices(_DIETARY_TAGS, count)
-
-    @overload
-    def beverage(self) -> str: ...
-    @overload
-    def beverage(self, count: Literal[1]) -> str: ...
-    @overload
-    def beverage(self, count: int) -> str | list[str]: ...
-    def beverage(self, count: int = 1) -> str | list[str]:
-        """Generate a beverage name (e.g. ``"Cappuccino"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of beverages to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_BEVERAGES)
-        return self._engine.choices(_BEVERAGES, count)
-
-    @overload
-    def cooking_method(self) -> str: ...
-    @overload
-    def cooking_method(self, count: Literal[1]) -> str: ...
-    @overload
-    def cooking_method(self, count: int) -> str | list[str]: ...
-    def cooking_method(self, count: int = 1) -> str | list[str]:
-        """Generate a cooking method (e.g. ``"Grilled"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of cooking methods to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
-        if count == 1:
-            return self._engine.choice(_COOKING_METHODS)
-        return self._engine.choices(_COOKING_METHODS, count)
-
-    @overload
-    def meal_price(self) -> str: ...
-    @overload
-    def meal_price(self, count: Literal[1]) -> str: ...
-    @overload
-    def meal_price(self, count: int) -> str | list[str]: ...
     def meal_price(self, count: int = 1) -> str | list[str]:
-        """Generate a meal price (e.g. ``"$24.99"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of meal prices to generate.
-
-        Returns
-        -------
-        str or list[str]
-        """
+        """Generate a meal price (e.g. ``"$24.99"``)."""
         if count == 1:
             return self._one_meal_price()
         return [self._one_meal_price() for _ in range(count)]

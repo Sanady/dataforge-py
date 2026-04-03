@@ -52,8 +52,6 @@ class WeatherProvider(BaseProvider):
 
 
 class TestRegisterProvider:
-    """Tests for DataForge.register_provider()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 

@@ -12,9 +12,7 @@ from dataforge import DataForge
 from dataforge.anonymizer import Anonymizer
 
 
-# ------------------------------------------------------------------
 # Fixtures
-# ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -36,9 +34,7 @@ def sample_rows() -> list[dict]:
     ]
 
 
-# ------------------------------------------------------------------
 # Construction
-# ------------------------------------------------------------------
 
 
 class TestAnonymizerConstruction:
@@ -60,9 +56,7 @@ class TestAnonymizerConstruction:
             anon.nonexistent = True  # type: ignore[attr-defined]
 
 
-# ------------------------------------------------------------------
 # Deterministic seed derivation
-# ------------------------------------------------------------------
 
 
 class TestSeedDerivation:
@@ -82,9 +76,7 @@ class TestSeedDerivation:
         assert s1 != s2
 
 
-# ------------------------------------------------------------------
 # Anonymize rows
-# ------------------------------------------------------------------
 
 
 class TestAnonymizeRows:
@@ -146,7 +138,6 @@ class TestAnonymizeRows:
         assert any(a["name"] != b["name"] for a, b in zip(r1, r2))
 
     def test_same_value_same_fake(self, anon: Anonymizer) -> None:
-        """Duplicate real values should map to the same fake value."""
         rows = [
             {"name": "Alice Smith"},
             {"name": "Alice Smith"},
@@ -157,9 +148,7 @@ class TestAnonymizeRows:
         assert result[0]["name"] != result[2]["name"]
 
 
-# ------------------------------------------------------------------
 # Cache management
-# ------------------------------------------------------------------
 
 
 class TestCache:
@@ -182,9 +171,7 @@ class TestCache:
         assert "cached_mappings=0" not in r
 
 
-# ------------------------------------------------------------------
 # Format-preserving anonymization
-# ------------------------------------------------------------------
 
 
 class TestFormatPreserving:
@@ -202,9 +189,7 @@ class TestFormatPreserving:
         assert "-" in result
 
 
-# ------------------------------------------------------------------
 # CSV anonymization
-# ------------------------------------------------------------------
 
 
 class TestAnonymizeCSV:
@@ -240,7 +225,6 @@ class TestAnonymizeCSV:
                 os.unlink(output_path)
 
     def test_csv_batch_processing(self, anon: Anonymizer) -> None:
-        """Ensure batch_size works correctly with more rows."""
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".csv", delete=False, newline="", encoding="utf-8"
         ) as f:

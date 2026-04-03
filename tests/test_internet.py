@@ -4,8 +4,6 @@ from dataforge import DataForge
 
 
 class TestInternetScalar:
-    """Tests for single-item internet generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -61,8 +59,6 @@ class TestInternetScalar:
 
 
 class TestInternetBatch:
-    """Tests for batch internet generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -103,8 +99,6 @@ class TestInternetBatch:
 
 
 class TestInternetLocales:
-    """Tests for internet across locales."""
-
     def test_de_DE_email(self) -> None:
         forge = DataForge(locale="de_DE", seed=42)
         email = forge.internet.email()

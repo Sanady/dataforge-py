@@ -1,32 +1,4 @@
-"""Database seeding — populate databases with realistic fake data.
-
-Uses SQLAlchemy (optional dependency) to introspect table structures,
-generate matching fake data, and insert it with dialect-specific
-optimizations (PostgreSQL COPY, MySQL FK checks, SQLite pragmas).
-
-Usage::
-
-    from dataforge import DataForge
-    from dataforge.seeder import DatabaseSeeder
-
-    forge = DataForge(seed=42)
-    seeder = DatabaseSeeder(forge, "sqlite:///test.db")
-
-    # Seed a single table
-    seeder.seed_table("users", count=1000)
-
-    # Seed with field overrides
-    seeder.seed_table("users", count=1000, field_overrides={
-        "email": "email",
-        "created_at": "datetime",
-    })
-
-    # Seed related tables
-    seeder.seed_relational({
-        "users": {"count": 100},
-        "orders": {"count": 500, "parent": "users"},
-    })
-"""
+"""Database seeding — populate databases with realistic fake data."""
 
 from __future__ import annotations
 
@@ -36,26 +8,8 @@ if TYPE_CHECKING:
     from dataforge.core import DataForge
 
 
-# Column-name → DataForge field heuristic (reuse from core)
-def _get_heuristic_map() -> dict[str, str]:
-    """Import and return field heuristic mappings."""
-    from dataforge.core import _FIELD_ALIASES, _SA_TYPE_MAP
-
-    return _FIELD_ALIASES, _SA_TYPE_MAP
-
-
 class DatabaseSeeder:
-    """Database seeder with SQLAlchemy table introspection.
-
-    Parameters
-    ----------
-    forge : DataForge
-        The DataForge instance for generating data.
-    connection_string : str
-        SQLAlchemy connection string (e.g. ``"sqlite:///test.db"``).
-    echo : bool
-        If True, echo SQL statements to stdout.
-    """
+    """Database seeder with SQLAlchemy table introspection."""
 
     __slots__ = ("_forge", "_connection_string", "_echo", "_engine", "_metadata")
 
@@ -95,18 +49,7 @@ class DatabaseSeeder:
         return self._metadata
 
     def _introspect_table(self, table_name: str) -> dict[str, str]:
-        """Introspect a table and map columns to DataForge fields.
-
-        Parameters
-        ----------
-        table_name : str
-            Name of the database table.
-
-        Returns
-        -------
-        dict[str, str]
-            Column name → DataForge field name.
-        """
+        """Introspect a table and map columns to DataForge fields."""
         from dataforge.core import _FIELD_ALIASES, _SA_TYPE_MAP
         from dataforge.registry import get_field_map
 
@@ -124,26 +67,21 @@ class DatabaseSeeder:
         for col in table.columns:
             col_name = col.name
 
-            # Skip auto-increment primary keys
             if col.primary_key and col.autoincrement:
                 continue
 
-            # Skip foreign keys (handled separately in relational seeding)
             if col.foreign_keys:
                 continue
 
-            # Tier 1: exact name match
             if col_name in field_map:
                 mapped[col_name] = col_name
                 continue
 
-            # Tier 2: alias match
             alias = _FIELD_ALIASES.get(col_name)
             if alias and alias in field_map:
                 mapped[col_name] = alias
                 continue
 
-            # Tier 3: column type fallback
             type_name = type(col.type).__name__
             type_field = _SA_TYPE_MAP.get(type_name)
             if type_field and type_field in field_map:
@@ -159,30 +97,12 @@ class DatabaseSeeder:
         field_overrides: dict[str, str] | None = None,
         batch_size: int = 1000,
     ) -> int:
-        """Seed a single table with fake data.
-
-        Parameters
-        ----------
-        table_name : str
-            Name of the table to seed.
-        count : int
-            Number of rows to insert.
-        field_overrides : dict[str, str] | None
-            Override column → field mappings.
-        batch_size : int
-            Insert batch size.
-
-        Returns
-        -------
-        int
-            Number of rows inserted.
-        """
+        """Seed a single table with fake data."""
         engine = self._get_engine()
         metadata = self._get_metadata()
         table = metadata.tables[table_name]
         dialect = engine.dialect.name
 
-        # Build field mapping
         field_map = self._introspect_table(table_name)
         if field_overrides:
             field_map.update(field_overrides)
@@ -193,10 +113,8 @@ class DatabaseSeeder:
                 f"Use field_overrides to specify mappings."
             )
 
-        # Generate data using Schema
         schema = self._forge.schema(field_map)
 
-        # Dialect-specific optimizations
         with engine.begin() as conn:
             self._apply_dialect_optimizations(conn, dialect, before=True)
 
@@ -218,28 +136,11 @@ class DatabaseSeeder:
         tables: dict[str, dict[str, Any]],
         batch_size: int = 1000,
     ) -> dict[str, int]:
-        """Seed multiple related tables with referential integrity.
-
-        Uses the existing ``RelationalSchema`` for data generation,
-        then inserts the results into the database.
-
-        Parameters
-        ----------
-        tables : dict[str, dict]
-            Table specifications (same format as ``forge.relational()``).
-        batch_size : int
-            Insert batch size per table.
-
-        Returns
-        -------
-        dict[str, int]
-            Number of rows inserted per table.
-        """
+        """Seed multiple related tables with referential integrity."""
         engine = self._get_engine()
         metadata = self._get_metadata()
         dialect = engine.dialect.name
 
-        # For each table, auto-detect fields if not specified
         for name, spec in tables.items():
             if "fields" not in spec:
                 field_overrides = spec.get("field_overrides", {})
@@ -247,11 +148,9 @@ class DatabaseSeeder:
                 detected.update(field_overrides)
                 spec["fields"] = detected
 
-        # Generate data with referential integrity
         rel_schema = self._forge.relational(tables)
         data = rel_schema.generate()
 
-        # Insert in topological order
         result: dict[str, int] = {}
         with engine.begin() as conn:
             self._apply_dialect_optimizations(conn, dialect, before=True)
@@ -262,7 +161,6 @@ class DatabaseSeeder:
                 table = metadata.tables[table_name]
                 rows = data[table_name]
 
-                # Insert in batches
                 inserted = 0
                 for batch_start in range(0, len(rows), batch_size):
                     batch = rows[batch_start : batch_start + batch_size]
@@ -297,20 +195,15 @@ class DatabaseSeeder:
                     conn.execute(text("PRAGMA synchronous = OFF"))
                     conn.execute(text("PRAGMA cache_size = -64000"))
                 except Exception:
-                    pass  # PRAGMAs may fail inside transactions
+                    pass
             else:
                 try:
                     conn.execute(text("PRAGMA synchronous = FULL"))
                 except Exception:
-                    pass  # PRAGMAs may fail inside transactions
+                    pass
 
     def list_tables(self) -> list[str]:
-        """List all tables in the database.
-
-        Returns
-        -------
-        list[str]
-        """
+        """List all tables in the database."""
         metadata = self._get_metadata()
         return sorted(metadata.tables.keys())
 

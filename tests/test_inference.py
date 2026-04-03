@@ -19,9 +19,7 @@ from dataforge.inference import (
 )
 
 
-# ------------------------------------------------------------------
 # Fixtures
-# ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -34,9 +32,7 @@ def inferrer(forge: DataForge) -> SchemaInferrer:
     return SchemaInferrer(forge)
 
 
-# ------------------------------------------------------------------
 # Base type detection
-# ------------------------------------------------------------------
 
 
 class TestDetectBaseType:
@@ -47,7 +43,6 @@ class TestDetectBaseType:
         assert _detect_base_type([1, 2, 3]) == "int"
 
     def test_string_ints(self) -> None:
-        """Numeric strings should be detected as int."""
         assert _detect_base_type(["1", "2", "3"]) == "int"
 
     def test_string_floats(self) -> None:
@@ -72,19 +67,15 @@ class TestDetectBaseType:
         assert result in ("str", "mixed")
 
     def test_with_nulls(self) -> None:
-        """Nulls should be excluded from type decision."""
         result = _detect_base_type([None, 1, 2, None, 3])
         assert result == "int"
 
 
-# ------------------------------------------------------------------
 # Semantic type detection
-# ------------------------------------------------------------------
 
 
 class TestDetectSemanticType:
     def test_email_column_name(self) -> None:
-        """Column named 'email' should match via alias."""
         result = _detect_semantic_type("email", ["test@x.com"], "str")
         assert result == "email"
 
@@ -93,7 +84,6 @@ class TestDetectSemanticType:
         assert result == "phone_number"
 
     def test_email_pattern_detection(self) -> None:
-        """Regex should detect emails even if column name is generic."""
         values = ["alice@test.com", "bob@test.com", "carol@test.com"]
         result = _detect_semantic_type("contact_info", values, "str")
         assert result == "email"
@@ -137,14 +127,11 @@ class TestDetectSemanticType:
         assert result is None
 
     def test_prefixed_column_name(self) -> None:
-        """user_email should strip prefix and match 'email'."""
         result = _detect_semantic_type("user_email", ["test@x.com"], "str")
         assert result is not None
 
 
-# ------------------------------------------------------------------
 # Null rate computation
-# ------------------------------------------------------------------
 
 
 class TestComputeNullRate:
@@ -164,9 +151,7 @@ class TestComputeNullRate:
         assert _compute_null_rate([]) == 0.0
 
 
-# ------------------------------------------------------------------
 # Statistics computation
-# ------------------------------------------------------------------
 
 
 class TestComputeStats:
@@ -193,9 +178,7 @@ class TestComputeStats:
         assert stats["count"] == 3
 
 
-# ------------------------------------------------------------------
 # ColumnAnalysis
-# ------------------------------------------------------------------
 
 
 class TestColumnAnalysis:
@@ -211,9 +194,7 @@ class TestColumnAnalysis:
             ca.nonexistent = True  # type: ignore[attr-defined]
 
 
-# ------------------------------------------------------------------
 # SchemaInferrer — from_records
-# ------------------------------------------------------------------
 
 
 class TestSchemaInferrerFromRecords:
@@ -263,9 +244,7 @@ class TestSchemaInferrerFromRecords:
         assert len(rows) == 3
 
 
-# ------------------------------------------------------------------
 # SchemaInferrer — from_csv
-# ------------------------------------------------------------------
 
 
 class TestSchemaInferrerFromCSV:
@@ -307,9 +286,7 @@ class TestSchemaInferrerFromCSV:
             os.unlink(path)
 
 
-# ------------------------------------------------------------------
 # SchemaInferrer — describe
-# ------------------------------------------------------------------
 
 
 class TestSchemaInferrerDescribe:
@@ -330,9 +307,7 @@ class TestSchemaInferrerDescribe:
         assert "mapped" in desc.lower()
 
 
-# ------------------------------------------------------------------
 # SchemaInferrer repr
-# ------------------------------------------------------------------
 
 
 class TestSchemaInferrerRepr:

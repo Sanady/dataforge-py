@@ -1,10 +1,7 @@
-"""MiscProvider — utility generators for common testing needs.
-
-All methods are locale-independent and optimized for speed.
-"""
+"""MiscProvider — utility generators for common testing needs."""
 
 import time as _time
-from typing import Any, Literal, overload
+from typing import Any
 
 from dataforge.providers.base import BaseProvider
 
@@ -15,15 +12,7 @@ _UUID4_SET = (0x4 << 76) | (0x2 << 62)  # set version 4 + variant 1 in one OR
 
 
 class MiscProvider(BaseProvider):
-    """Generates UUIDs, booleans, and utility random selections.
-
-    This provider is locale-independent.
-
-    Parameters
-    ----------
-    engine : RandomEngine
-        The shared random engine instance.
-    """
+    """Generates UUIDs, booleans, and utility random selections."""
 
     __slots__ = ()
 
@@ -36,9 +25,7 @@ class MiscProvider(BaseProvider):
         "boolean": "boolean",
     }
 
-    # ------------------------------------------------------------------
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_uuid4(self) -> str:
         # 128 random bits → set version 4 and variant 1 with 2 ops
@@ -58,28 +45,10 @@ class MiscProvider(BaseProvider):
         h = f"{n:032x}"
         return f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:]}"
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
-    @overload
-    def uuid4(self) -> str: ...
-    @overload
-    def uuid4(self, count: Literal[1]) -> str: ...
-    @overload
-    def uuid4(self, count: int) -> str | list[str]: ...
     def uuid4(self, count: int = 1) -> str | list[str]:
-        """Generate a random UUID4 string.
-
-        Uses direct hex formatting from ``getrandbits(128)`` with
-        version/variant bits set arithmetically — avoids ``bytearray``,
-        ``bytes``, and ``uuid.UUID()`` constructor overhead entirely.
-
-        Parameters
-        ----------
-        count : int
-            Number of UUIDs to generate.
-        """
+        """Generate a random UUID4 string."""
         if count == 1:
             return self._one_uuid4()
         rng_bits = self._engine._rng.getrandbits
@@ -92,40 +61,8 @@ class MiscProvider(BaseProvider):
             result.append(f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:]}")
         return result
 
-    @overload
-    def uuid7(self) -> str: ...
-    @overload
-    def uuid7(self, count: Literal[1]) -> str: ...
-    @overload
-    def uuid7(self, count: int) -> str | list[str]: ...
     def uuid7(self, count: int = 1) -> str | list[str]:
-        """Generate a random UUID7 string (time-ordered, monotonic).
-
-        UUID7 (RFC 9562) embeds a millisecond-precision Unix timestamp
-        in the first 48 bits, making the values naturally sortable by
-        creation time — ideal for database primary keys.
-
-        The timestamp uses real wall-clock time for time-ordering.
-        The random portion uses the shared engine RNG, so output is
-        deterministic when a seed is set (only the random bits are
-        reproducible; the timestamp reflects actual generation time).
-
-        Uses direct hex formatting — avoids ``to_bytes``, ``bytearray``,
-        and ``uuid.UUID()`` constructor overhead entirely.
-
-        Parameters
-        ----------
-        count : int
-            Number of UUIDs to generate.
-
-        Returns
-        -------
-        str or list[str]
-
-        .. versionadded:: 1.1.0
-            Custom RFC 9562 implementation — no stdlib ``uuid.uuid7()``
-            dependency.  Works on Python >= 3.12.
-        """
+        """Generate a random UUID7 string (time-ordered, monotonic)."""
         if count == 1:
             return self._one_uuid7()
         rng_bits = self._engine._rng.getrandbits
@@ -142,15 +79,7 @@ class MiscProvider(BaseProvider):
         return result
 
     def boolean(self, count: int = 1, probability: float = 0.5) -> bool | list[bool]:
-        """Generate a random boolean.
-
-        Parameters
-        ----------
-        count : int
-            Number of booleans to generate.
-        probability : float
-            Probability of ``True`` (0.0–1.0). Default 0.5.
-        """
+        """Generate a random boolean."""
         rng = self._engine._rng
         if count == 1:
             return rng.random() < probability
@@ -159,38 +88,14 @@ class MiscProvider(BaseProvider):
     def random_element(
         self, elements: tuple[Any, ...] | list[Any], count: int = 1
     ) -> Any:
-        """Pick random element(s) from a user-provided collection.
-
-        Parameters
-        ----------
-        elements : tuple or list
-            The items to choose from.
-        count : int
-            Number of items to pick.
-
-        Returns
-        -------
-        Any or list[Any]
-        """
+        """Pick random element(s) from a user-provided collection."""
         data = tuple(elements) if isinstance(elements, list) else elements
         if count == 1:
             return self._engine.choice(data)
         return self._engine.choices(data, count)
 
     def null_or(self, value: Any, probability: float = 0.1) -> Any:
-        """Return ``None`` with *probability*, otherwise return *value*.
-
-        Parameters
-        ----------
-        value : Any
-            The value to return when not null.
-        probability : float
-            Probability of returning ``None`` (0.0–1.0).
-
-        Returns
-        -------
-        Any
-        """
+        """Return ``None`` with *probability*, otherwise return *value*."""
         if self._engine._rng.random() < probability:
             return None
         return value

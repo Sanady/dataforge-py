@@ -29,9 +29,7 @@ from dataforge.schema_io import (
 from dataforge.decorators import provider, _wrap_with_count
 
 
-# ------------------------------------------------------------------
 # Fixtures
-# ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -46,9 +44,7 @@ def tmp_dir():
         yield d
 
 
-# ==================================================================
 # schema_to_dict / dict_to_schema_args
-# ==================================================================
 
 
 class TestSchemaToDict:
@@ -60,7 +56,6 @@ class TestSchemaToDict:
         assert "unique_together" not in d
 
     def test_dict_fields_compact(self) -> None:
-        """When all keys == values, it should compact to list form."""
         d = schema_to_dict({"first_name": "first_name", "email": "email"}, count=10)
         assert d["fields"] == ["first_name", "email"]
 
@@ -134,9 +129,7 @@ class TestDictToSchemaArgs:
             dict_to_schema_args({"fields": "not_valid"})
 
 
-# ==================================================================
 # JSON serialization round-trip
-# ==================================================================
 
 
 class TestJsonRoundTrip:
@@ -177,9 +170,7 @@ class TestJsonRoundTrip:
         assert loaded == original
 
 
-# ==================================================================
 # YAML serialization round-trip
-# ==================================================================
 
 
 class TestYamlRoundTrip:
@@ -192,7 +183,6 @@ class TestYamlRoundTrip:
         assert loaded["count"] == original["count"]
 
     def test_yml_extension(self, tmp_dir: str) -> None:
-        """Test .yml extension is also recognized."""
         path = os.path.join(tmp_dir, "schema.yml")
         original = schema_to_dict(["first_name"], count=5)
         save_schema(original, path)
@@ -245,9 +235,7 @@ class TestYamlRoundTrip:
         assert result["fields"] == ["email"]
 
 
-# ==================================================================
 # TOML serialization round-trip
-# ==================================================================
 
 
 class TestTomlRoundTrip:
@@ -270,9 +258,7 @@ class TestTomlRoundTrip:
         assert fields["Email"] == "email"
 
 
-# ==================================================================
 # Format detection errors
-# ==================================================================
 
 
 class TestFormatDetection:
@@ -293,9 +279,7 @@ class TestFormatDetection:
             load_schema("nonexistent_file.json")
 
 
-# ==================================================================
 # Schema.to_schema_dict() and Schema.save_schema()
-# ==================================================================
 
 
 class TestSchemaSerializationMethods:
@@ -365,9 +349,7 @@ class TestSchemaSerializationMethods:
         assert loaded["fields"] == ["first_name", "email"]
 
 
-# ==================================================================
 # DataForge.schema_from_dict() and schema_from_file()
-# ==================================================================
 
 
 class TestSchemaFromDict:
@@ -443,7 +425,6 @@ class TestSchemaFromFile:
         assert len(rows) == 3
 
     def test_round_trip_generate(self, forge: DataForge, tmp_dir: str) -> None:
-        """Full round-trip: create schema -> save -> load -> generate."""
         path = os.path.join(tmp_dir, "round_trip.json")
 
         # Create and save
@@ -459,9 +440,7 @@ class TestSchemaFromFile:
         assert all("city" in r for r in rows)
 
 
-# ==================================================================
 # CLI --schema and --save-schema flags
-# ==================================================================
 
 
 class TestCliSchemaFlags:
@@ -558,9 +537,7 @@ class TestCliSchemaFlags:
         assert ret == 1
 
 
-# ==================================================================
 # New Locales: sv_SE, da_DK, nb_NO, fi_FI, tr_TR
-# ==================================================================
 
 
 NEW_LOCALES = ["sv_SE", "da_DK", "nb_NO", "fi_FI", "tr_TR"]
@@ -632,7 +609,6 @@ class TestNewLocales:
 
     @pytest.mark.parametrize("locale", NEW_LOCALES)
     def test_schema_with_locale(self, locale: str) -> None:
-        """Test that new locales work with schema generation."""
         forge = DataForge(locale=locale, seed=42)
         schema = forge.schema(["first_name", "city", "email"])
         rows = schema.generate(count=10)
@@ -643,8 +619,6 @@ class TestNewLocales:
 
 
 class TestLocaleDataPresence:
-    """Verify that locale data modules contain expected attributes."""
-
     @pytest.mark.parametrize("locale", NEW_LOCALES)
     def test_person_data_has_names(self, locale: str) -> None:
         import importlib
@@ -680,7 +654,6 @@ class TestLocaleDataPresence:
 
     @pytest.mark.parametrize("locale", NEW_LOCALES)
     def test_data_is_immutable_tuples(self, locale: str) -> None:
-        """All locale data should be immutable tuples, not lists."""
         import importlib
 
         mod = importlib.import_module(f"dataforge.locales.{locale}.person")
@@ -688,14 +661,11 @@ class TestLocaleDataPresence:
         assert isinstance(mod.last_names, tuple)
 
 
-# ==================================================================
 # @provider decorator
-# ==================================================================
 
 
 class TestProviderDecorator:
     def test_basic_transformation(self) -> None:
-        """@provider transforms a plain class into a BaseProvider subclass."""
         from dataforge.providers.base import BaseProvider
 
         @provider("test_greet")
@@ -712,7 +682,6 @@ class TestProviderDecorator:
         assert "goodbye" in GreetProvider._field_map
 
     def test_scalar_return(self) -> None:
-        """count=1 returns a scalar."""
 
         @provider("test_scalar")
         class ScalarProvider:
@@ -726,7 +695,6 @@ class TestProviderDecorator:
         assert isinstance(result, str)
 
     def test_batch_return(self) -> None:
-        """count>1 returns a list."""
 
         @provider("test_batch")
         class BatchProvider:
@@ -741,7 +709,6 @@ class TestProviderDecorator:
         assert all(x == "Hi" for x in result)
 
     def test_custom_field_map(self) -> None:
-        """Explicit field_map overrides auto-generated one."""
 
         @provider("test_custom_fm", field_map={"temp": "temperature"})
         class CustomFM:
@@ -751,7 +718,6 @@ class TestProviderDecorator:
         assert CustomFM._field_map == {"temp": "temperature"}
 
     def test_private_methods_excluded(self) -> None:
-        """Methods starting with _ are not included in field_map."""
 
         @provider("test_private")
         class PrivateProvider:
@@ -765,7 +731,6 @@ class TestProviderDecorator:
         assert "_private_method" not in PrivateProvider._field_map
 
     def test_schema_integration(self) -> None:
-        """Provider created via @provider works with Schema."""
 
         @provider("test_schema_int")
         class SchemaIntProvider:
@@ -780,7 +745,6 @@ class TestProviderDecorator:
         assert all(r["test_schema_int.value"] == "test_value" for r in rows)
 
     def test_provider_name_preserved(self) -> None:
-        """The decorated class keeps its original name."""
 
         @provider("test_name_pres")
         class MySpecialProvider:
@@ -790,7 +754,6 @@ class TestProviderDecorator:
         assert MySpecialProvider.__name__ == "MySpecialProvider"
 
     def test_slots_empty(self) -> None:
-        """Decorated providers have __slots__ = ()."""
 
         @provider("test_slots")
         class SlotProvider:
@@ -800,7 +763,6 @@ class TestProviderDecorator:
         assert SlotProvider.__slots__ == ()
 
     def test_locale_modules(self) -> None:
-        """locale_modules parameter is stored on the class."""
 
         @provider("test_locale", locale_modules=("person",))
         class LocaleProvider:
@@ -846,9 +808,7 @@ class TestWrapWithCount:
         assert wrapped(d, count=1) == "x"
 
 
-# ==================================================================
 # Edge cases / error handling
-# ==================================================================
 
 
 class TestEdgeCases:
@@ -867,7 +827,6 @@ class TestEdgeCases:
             load_schema(path)
 
     def test_schema_from_dict_preserves_fields_spec(self, forge: DataForge) -> None:
-        """_fields_spec should be set for serialization round-trip."""
         schema = forge.schema(["first_name", "email"])
         assert schema._fields_spec == ["first_name", "email"]
 

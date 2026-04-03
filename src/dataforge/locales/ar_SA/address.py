@@ -45,16 +45,6 @@ street_names: tuple[str, ...] = (
     "Southern Ring",
     "Western Ring",
     "Al-Kharj",
-    "Al-Suwaidi",
-    "Al-Naseem",
-    "Al-Malaz",
-    "Al-Rawdah",
-    "Al-Hamra",
-    "Al-Nuzha",
-    "Al-Wurud",
-    "Al-Sahafa",
-    "Al-Rayyan",
-    "Al-Andalus",
 )
 
 street_suffixes: tuple[str, ...] = (

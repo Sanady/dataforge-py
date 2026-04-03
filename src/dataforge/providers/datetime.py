@@ -5,7 +5,6 @@ directly and generates values within configurable ranges.
 """
 
 import datetime as _dt
-from typing import Literal, overload
 
 from dataforge.providers.base import BaseProvider
 
@@ -53,27 +52,6 @@ _TIMEZONES: tuple[str, ...] = (
     "Asia/Shanghai",
     "Asia/Hong_Kong",
     "Asia/Seoul",
-    "Asia/Singapore",
-    "Asia/Dubai",
-    "Asia/Kolkata",
-    "Asia/Bangkok",
-    "Asia/Jakarta",
-    "Asia/Karachi",
-    "Asia/Riyadh",
-    "Asia/Taipei",
-    "Australia/Sydney",
-    "Australia/Melbourne",
-    "Australia/Perth",
-    "Pacific/Auckland",
-    "America/Sao_Paulo",
-    "America/Mexico_City",
-    "America/Buenos_Aires",
-    "America/Bogota",
-    "America/Lima",
-    "Africa/Cairo",
-    "Africa/Lagos",
-    "Africa/Johannesburg",
-    "Africa/Nairobi",
 )
 
 
@@ -103,9 +81,11 @@ class DateTimeProvider(BaseProvider):
         "unix_timestamp": "unix_timestamp",
     }
 
-    # ------------------------------------------------------------------
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "timezone": _TIMEZONES,
+    }
+
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_date(
         self,
@@ -138,11 +118,7 @@ class DateTimeProvider(BaseProvider):
         return f"{t.hour:02d}:{t.minute:02d}:{t.second:02d}"
 
     def _one_time_str(self) -> str:
-        """Generate a random time as ``HH:MM:SS`` string — fast path.
-
-        Bypasses ``_dt.time`` object creation entirely by using
-        ``divmod`` arithmetic directly on the random seconds value.
-        """
+        """Generate a random time as ``HH:MM:SS`` string — fast path."""
         total = self._engine.random_int(0, _SECONDS_IN_DAY - 1)
         h, rem = divmod(total, 3600)
         m, s = divmod(rem, 60)
@@ -163,16 +139,8 @@ class DateTimeProvider(BaseProvider):
         end = today.replace(year=today.year - min_age)
         return self._one_date(start, end)
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
-    @overload
-    def date(self) -> str: ...
-    @overload
-    def date(self, count: Literal[1]) -> str: ...
-    @overload
-    def date(self, count: int) -> str | list[str]: ...
     def date(
         self,
         count: int = 1,
@@ -180,19 +148,7 @@ class DateTimeProvider(BaseProvider):
         start: _dt.date | None = None,
         end: _dt.date | None = None,
     ) -> str | list[str]:
-        """Generate a random date string.
-
-        Parameters
-        ----------
-        count : int
-            Number of dates to generate.
-        fmt : str
-            strftime format string.
-        start : datetime.date | None
-            Earliest date (default: 1970-01-01).
-        end : datetime.date | None
-            Latest date (default: 2030-12-31).
-        """
+        """Generate a random date string."""
         s = start or _MIN_DATE
         e = end or _MAX_DATE
         # Fast path: default ISO format avoids expensive strftime
@@ -213,22 +169,8 @@ class DateTimeProvider(BaseProvider):
             return self._one_date(s, e).strftime(fmt)
         return [self._one_date(s, e).strftime(fmt) for _ in range(count)]
 
-    @overload
-    def time(self) -> str: ...
-    @overload
-    def time(self, count: Literal[1]) -> str: ...
-    @overload
-    def time(self, count: int) -> str | list[str]: ...
     def time(self, count: int = 1, fmt: str = "%H:%M:%S") -> str | list[str]:
-        """Generate a random time string.
-
-        Parameters
-        ----------
-        count : int
-            Number of times to generate.
-        fmt : str
-            strftime format string.
-        """
+        """Generate a random time string."""
         # Fast path: default HH:MM:SS format — skip _dt.time object
         if fmt == "%H:%M:%S":
             if count == 1:
@@ -246,12 +188,6 @@ class DateTimeProvider(BaseProvider):
             return self._one_time().strftime(fmt)
         return [self._one_time().strftime(fmt) for _ in range(count)]
 
-    @overload
-    def datetime(self) -> str: ...
-    @overload
-    def datetime(self, count: Literal[1]) -> str: ...
-    @overload
-    def datetime(self, count: int) -> str | list[str]: ...
     def datetime(
         self,
         count: int = 1,
@@ -259,19 +195,7 @@ class DateTimeProvider(BaseProvider):
         start: _dt.date | None = None,
         end: _dt.date | None = None,
     ) -> str | list[str]:
-        """Generate a random datetime string.
-
-        Parameters
-        ----------
-        count : int
-            Number of datetimes to generate.
-        fmt : str
-            strftime format string.
-        start : datetime.date | None
-            Earliest date (default: 1970-01-01).
-        end : datetime.date | None
-            Latest date (default: 2030-12-31).
-        """
+        """Generate a random datetime string."""
         s = start or _MIN_DATE
         e = end or _MAX_DATE
         # Fast path: default ISO-like format — avoid strftime + datetime objects
@@ -305,12 +229,6 @@ class DateTimeProvider(BaseProvider):
             return self._one_datetime(s, e).strftime(fmt)
         return [self._one_datetime(s, e).strftime(fmt) for _ in range(count)]
 
-    @overload
-    def date_of_birth(self) -> str: ...
-    @overload
-    def date_of_birth(self, count: Literal[1]) -> str: ...
-    @overload
-    def date_of_birth(self, count: int) -> str | list[str]: ...
     def date_of_birth(
         self,
         count: int = 1,
@@ -318,19 +236,7 @@ class DateTimeProvider(BaseProvider):
         max_age: int = 80,
         fmt: str = "%Y-%m-%d",
     ) -> str | list[str]:
-        """Generate a random date of birth.
-
-        Parameters
-        ----------
-        count : int
-            Number of dates to generate.
-        min_age : int
-            Minimum age in years.
-        max_age : int
-            Maximum age in years.
-        fmt : str
-            strftime format string.
-        """
+        """Generate a random date of birth."""
         # Compute today() once for the entire batch
         today = _dt.date.today()
         start = today.replace(year=today.year - max_age)
@@ -349,46 +255,16 @@ class DateTimeProvider(BaseProvider):
         return [self._one_date(start, end).strftime(fmt) for _ in range(count)]
 
     def date_object(self, count: int = 1) -> _dt.date | list[_dt.date]:
-        """Generate a random ``datetime.date`` object.
-
-        Parameters
-        ----------
-        count : int
-            Number of date objects to generate.
-        """
+        """Generate a random ``datetime.date`` object."""
         if count == 1:
             return self._one_date()
         return [self._one_date() for _ in range(count)]
 
     def datetime_object(self, count: int = 1) -> _dt.datetime | list[_dt.datetime]:
-        """Generate a random ``datetime.datetime`` object.
-
-        Parameters
-        ----------
-        count : int
-            Number of datetime objects to generate.
-        """
+        """Generate a random ``datetime.datetime`` object."""
         if count == 1:
             return self._one_datetime()
         return [self._one_datetime() for _ in range(count)]
-
-    @overload
-    def timezone(self) -> str: ...
-    @overload
-    def timezone(self, count: Literal[1]) -> str: ...
-    @overload
-    def timezone(self, count: int) -> str | list[str]: ...
-    def timezone(self, count: int = 1) -> str | list[str]:
-        """Generate a random IANA timezone string (e.g. ``"Europe/Berlin"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of timezone strings to generate.
-        """
-        if count == 1:
-            return self._engine.choice(_TIMEZONES)
-        return self._engine.choices(_TIMEZONES, count)
 
     def unix_timestamp(
         self,
@@ -396,17 +272,7 @@ class DateTimeProvider(BaseProvider):
         start: _dt.date | None = None,
         end: _dt.date | None = None,
     ) -> int | list[int]:
-        """Generate a random Unix timestamp (seconds since epoch).
-
-        Parameters
-        ----------
-        count : int
-            Number of timestamps to generate.
-        start : datetime.date | None
-            Earliest date (default: 1970-01-01).
-        end : datetime.date | None
-            Latest date (default: 2030-12-31).
-        """
+        """Generate a random Unix timestamp (seconds since epoch)."""
         # Use pre-computed constants for default range to avoid
         # .toordinal() per call.
         if start is None and end is None:

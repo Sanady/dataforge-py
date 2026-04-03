@@ -12,19 +12,14 @@ import pytest
 from dataforge import DataForge
 
 
-# ------------------------------------------------------------------
 # Nullable field support
-# ------------------------------------------------------------------
 
 
 class TestNullableFields:
-    """Test null_fields parameter on Schema."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(seed=42)
 
     def test_null_fields_basic(self) -> None:
-        """Fields with null_probability should produce some None values."""
         schema = self.forge.schema(
             ["first_name", "email"],
             null_fields={"email": 0.5},
@@ -38,7 +33,6 @@ class TestNullableFields:
         assert all(r["first_name"] is not None for r in rows)
 
     def test_null_fields_zero_probability(self) -> None:
-        """Probability 0.0 should produce no None values."""
         schema = self.forge.schema(
             ["first_name", "email"],
             null_fields={"email": 0.0},
@@ -47,7 +41,6 @@ class TestNullableFields:
         assert all(r["email"] is not None for r in rows)
 
     def test_null_fields_full_probability(self) -> None:
-        """Probability 1.0 should make all values None."""
         schema = self.forge.schema(
             ["first_name", "email"],
             null_fields={"email": 1.0},
@@ -56,7 +49,6 @@ class TestNullableFields:
         assert all(r["email"] is None for r in rows)
 
     def test_null_fields_multiple_columns(self) -> None:
-        """Multiple columns can have different null probabilities."""
         schema = self.forge.schema(
             ["first_name", "email", "city"],
             null_fields={"email": 0.5, "city": 0.3},
@@ -70,7 +62,6 @@ class TestNullableFields:
         assert all(r["first_name"] is not None for r in rows)
 
     def test_null_fields_invalid_column_raises(self) -> None:
-        """Invalid column name in null_fields should raise ValueError."""
         with pytest.raises(ValueError, match="not a column"):
             self.forge.schema(
                 ["first_name", "email"],
@@ -78,7 +69,6 @@ class TestNullableFields:
             )
 
     def test_null_fields_none_arg(self) -> None:
-        """null_fields=None should work (no nulls)."""
         schema = self.forge.schema(
             ["first_name", "email"],
             null_fields=None,
@@ -87,7 +77,6 @@ class TestNullableFields:
         assert all(r["email"] is not None for r in rows)
 
     def test_null_fields_in_csv(self) -> None:
-        """Null values should appear as empty strings in CSV output."""
         schema = self.forge.schema(
             ["first_name", "email"],
             null_fields={"email": 1.0},
@@ -102,7 +91,6 @@ class TestNullableFields:
             assert parts[1] == "", f"Expected empty email, got {parts[1]!r}"
 
     def test_null_fields_in_json(self) -> None:
-        """Null values should appear as null in JSON output."""
         schema = self.forge.schema(
             ["first_name", "email"],
             null_fields={"email": 1.0},
@@ -113,7 +101,6 @@ class TestNullableFields:
             assert row["email"] is None
 
     def test_null_fields_in_sql(self) -> None:
-        """Null values should appear as NULL in SQL output."""
         schema = self.forge.schema(
             ["first_name", "email"],
             null_fields={"email": 1.0},
@@ -122,7 +109,6 @@ class TestNullableFields:
         assert "NULL" in sql_output
 
     def test_null_fields_with_stream(self) -> None:
-        """Null injection should work with stream()."""
         schema = self.forge.schema(
             ["first_name", "email"],
             null_fields={"email": 1.0},
@@ -132,7 +118,6 @@ class TestNullableFields:
         assert all(r["email"] is None for r in rows)
 
     def test_null_fields_with_lambda(self) -> None:
-        """Null fields should work alongside lambda fields."""
         schema = self.forge.schema(
             {
                 "name": "first_name",
@@ -147,7 +132,6 @@ class TestNullableFields:
             assert row["upper_name"] == row["name"].upper()
 
     def test_null_fields_via_core_schema(self) -> None:
-        """DataForge.schema() should pass null_fields through."""
         schema = self.forge.schema(
             ["first_name", "email"],
             null_fields={"email": 1.0},
@@ -156,19 +140,14 @@ class TestNullableFields:
         assert all(r["email"] is None for r in rows)
 
 
-# ------------------------------------------------------------------
 # Encoding support
-# ------------------------------------------------------------------
 
 
 class TestEncoding:
-    """Test encoding parameter on export methods."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(seed=42)
 
     def test_csv_encoding_utf8(self) -> None:
-        """Default UTF-8 encoding should work."""
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
             path = f.name
         try:
@@ -181,7 +160,6 @@ class TestEncoding:
             os.unlink(path)
 
     def test_csv_encoding_latin1(self) -> None:
-        """Latin-1 encoding should be usable."""
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
             path = f.name
         try:
@@ -194,7 +172,6 @@ class TestEncoding:
             os.unlink(path)
 
     def test_jsonl_encoding(self) -> None:
-        """JSONL encoding parameter should work."""
         with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
             path = f.name
         try:
@@ -207,7 +184,6 @@ class TestEncoding:
             os.unlink(path)
 
     def test_json_encoding(self) -> None:
-        """JSON encoding parameter should work."""
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             path = f.name
         try:
@@ -220,7 +196,6 @@ class TestEncoding:
             os.unlink(path)
 
     def test_stream_csv_encoding(self) -> None:
-        """stream_to_csv should accept encoding parameter."""
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
             path = f.name
         try:
@@ -234,7 +209,6 @@ class TestEncoding:
             os.unlink(path)
 
     def test_stream_jsonl_encoding(self) -> None:
-        """stream_to_jsonl should accept encoding parameter."""
         with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
             path = f.name
         try:
@@ -245,7 +219,6 @@ class TestEncoding:
             os.unlink(path)
 
     def test_core_csv_encoding_passthrough(self) -> None:
-        """DataForge.to_csv() should pass encoding through."""
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
             path = f.name
         try:
@@ -262,19 +235,14 @@ class TestEncoding:
             os.unlink(path)
 
 
-# ------------------------------------------------------------------
 # Compression support (gzip)
-# ------------------------------------------------------------------
 
 
 class TestCompression:
-    """Test gzip compression on export methods."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(seed=42)
 
     def test_csv_gzip_auto(self) -> None:
-        """CSV with .gz extension should auto-compress."""
         with tempfile.NamedTemporaryFile(suffix=".csv.gz", delete=False) as f:
             path = f.name
         try:
@@ -292,7 +260,6 @@ class TestCompression:
             os.unlink(path)
 
     def test_csv_gzip_explicit(self) -> None:
-        """CSV with compress=True should gzip even without .gz extension."""
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
             path = f.name
         try:
@@ -305,7 +272,6 @@ class TestCompression:
             os.unlink(path)
 
     def test_csv_gzip_suppress(self) -> None:
-        """compress=False should disable auto-gzip even with .gz extension."""
         with tempfile.NamedTemporaryFile(suffix=".csv.gz", delete=False) as f:
             path = f.name
         try:
@@ -319,7 +285,6 @@ class TestCompression:
             os.unlink(path)
 
     def test_jsonl_gzip(self) -> None:
-        """JSONL with .gz extension should auto-compress."""
         with tempfile.NamedTemporaryFile(suffix=".jsonl.gz", delete=False) as f:
             path = f.name
         try:
@@ -336,7 +301,6 @@ class TestCompression:
             os.unlink(path)
 
     def test_json_gzip(self) -> None:
-        """JSON with .gz extension should auto-compress."""
         with tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as f:
             path = f.name
         try:
@@ -349,7 +313,6 @@ class TestCompression:
             os.unlink(path)
 
     def test_sql_gzip(self) -> None:
-        """SQL with .gz extension should auto-compress."""
         with tempfile.NamedTemporaryFile(suffix=".sql.gz", delete=False) as f:
             path = f.name
         try:
@@ -362,7 +325,6 @@ class TestCompression:
             os.unlink(path)
 
     def test_stream_csv_gzip(self) -> None:
-        """stream_to_csv with .gz extension should auto-compress."""
         with tempfile.NamedTemporaryFile(suffix=".csv.gz", delete=False) as f:
             path = f.name
         try:
@@ -376,7 +338,6 @@ class TestCompression:
             os.unlink(path)
 
     def test_stream_jsonl_gzip(self) -> None:
-        """stream_to_jsonl with .gz extension should auto-compress."""
         with tempfile.NamedTemporaryFile(suffix=".jsonl.gz", delete=False) as f:
             path = f.name
         try:
@@ -390,7 +351,6 @@ class TestCompression:
             os.unlink(path)
 
     def test_core_csv_gzip_passthrough(self) -> None:
-        """DataForge.to_csv() should pass compress through."""
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
             path = f.name
         try:
@@ -407,7 +367,6 @@ class TestCompression:
             os.unlink(path)
 
     def test_core_jsonl_gzip_passthrough(self) -> None:
-        """DataForge.to_jsonl() should pass compress through."""
         with tempfile.NamedTemporaryFile(suffix=".jsonl.gz", delete=False) as f:
             path = f.name
         try:
@@ -423,7 +382,6 @@ class TestCompression:
             os.unlink(path)
 
     def test_core_stream_csv_gzip_passthrough(self) -> None:
-        """DataForge.stream_to_csv() should pass compress through."""
         with tempfile.NamedTemporaryFile(suffix=".csv.gz", delete=False) as f:
             path = f.name
         try:
@@ -440,16 +398,11 @@ class TestCompression:
             os.unlink(path)
 
 
-# ------------------------------------------------------------------
 # CLI — null-fields, encoding, compression
-# ------------------------------------------------------------------
 
 
 class TestCLIPhase2:
-    """Test CLI flags added in Phase 2."""
-
     def test_null_fields_flag(self) -> None:
-        """--null-fields should produce some null values."""
         from dataforge.cli import main
         import io
         import sys
@@ -478,7 +431,6 @@ class TestCLIPhase2:
         assert all(row["email"] is None for row in data)
 
     def test_null_fields_invalid_format(self) -> None:
-        """--null-fields with bad format should error."""
         from dataforge.cli import main
         import io
         import sys
@@ -498,7 +450,6 @@ class TestCLIPhase2:
         assert ret == 1
 
     def test_null_fields_invalid_probability(self) -> None:
-        """--null-fields with probability > 1 should error."""
         from dataforge.cli import main
         import io
         import sys
@@ -519,7 +470,6 @@ class TestCLIPhase2:
         assert ret == 1
 
     def test_compress_flag_stream(self) -> None:
-        """--compress with --stream should produce gzip output."""
         from dataforge.cli import main
 
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
@@ -557,7 +507,6 @@ class TestCLIPhase2:
             os.unlink(path)
 
     def test_compress_flag_non_stream(self) -> None:
-        """--compress with -o should produce gzip output."""
         from dataforge.cli import main
 
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
@@ -586,7 +535,6 @@ class TestCLIPhase2:
             os.unlink(path)
 
     def test_encoding_flag(self) -> None:
-        """--encoding should be passed through to file output."""
         from dataforge.cli import main
 
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
@@ -616,66 +564,52 @@ class TestCLIPhase2:
             os.unlink(path)
 
 
-# ------------------------------------------------------------------
 # Statistical distributions (from backend, added in Phase 1 but tested here)
-# ------------------------------------------------------------------
 
 
 class TestStatisticalDistributions:
-    """Test statistical distribution methods on RandomEngine."""
-
     def setup_method(self) -> None:
         from dataforge.backend import RandomEngine
 
         self.engine = RandomEngine(seed=42)
 
     def test_gauss_range(self) -> None:
-        """Gaussian values should be roughly within expected range."""
         values = [self.engine.gauss(mu=100, sigma=10) for _ in range(1000)]
         mean = sum(values) / len(values)
         assert 90 < mean < 110
 
     def test_gauss_int_clamped(self) -> None:
-        """gauss_int should clamp to [min, max]."""
         values = [self.engine.gauss_int(50, 20, 0, 100) for _ in range(1000)]
         assert all(0 <= v <= 100 for v in values)
 
     def test_exponential_positive(self) -> None:
-        """Exponential values should all be positive."""
         values = [self.engine.exponential(1.0) for _ in range(100)]
         assert all(v > 0 for v in values)
 
     def test_log_normal_positive(self) -> None:
-        """Log-normal values should all be positive."""
         values = [self.engine.log_normal(0, 1) for _ in range(100)]
         assert all(v > 0 for v in values)
 
     def test_triangular_bounds(self) -> None:
-        """Triangular values should be within [low, high]."""
         values = [self.engine.triangular(10.0, 20.0) for _ in range(100)]
         assert all(10.0 <= v <= 20.0 for v in values)
 
     def test_pareto_positive(self) -> None:
-        """Pareto values should be positive."""
         values = [self.engine.pareto(2.0) for _ in range(100)]
         assert all(v > 0 for v in values)
 
     def test_beta_unit_interval(self) -> None:
-        """Beta values should be in (0, 1)."""
         values = [self.engine.beta(2.0, 5.0) for _ in range(100)]
         assert all(0 < v < 1 for v in values)
 
     def test_gamma_positive(self) -> None:
-        """Gamma values should be positive."""
         values = [self.engine.gamma(2.0, 1.0) for _ in range(100)]
         assert all(v > 0 for v in values)
 
     def test_zipf_bounds(self) -> None:
-        """Zipf values should be in [1, n]."""
         values = [self.engine.zipf(1.5, 50) for _ in range(100)]
         assert all(1 <= v <= 50 for v in values)
 
     def test_vonmises_returns_float(self) -> None:
-        """Von Mises should return a float."""
         val = self.engine.vonmises(0.0, 2.0)
         assert isinstance(val, float)

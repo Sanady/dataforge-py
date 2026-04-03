@@ -1,29 +1,4 @@
-"""Schema inference — analyze data and auto-create matching Schemas.
-
-Analyzes CSV files, DataFrames, database tables, or lists of dicts
-to detect types, semantic patterns, distributions, and null rates,
-then builds a matching DataForge Schema.
-
-Usage::
-
-    from dataforge import DataForge
-    from dataforge.inference import SchemaInferrer
-
-    forge = DataForge(seed=42)
-    inferrer = SchemaInferrer(forge)
-
-    # From CSV
-    schema = inferrer.from_csv("data.csv")
-
-    # From list of dicts
-    schema = inferrer.from_records([
-        {"name": "Alice", "email": "alice@test.com", "age": 30},
-        {"name": "Bob", "email": "bob@test.com", "age": 25},
-    ])
-
-    # Inspect what was detected
-    print(inferrer.describe())
-"""
+"""Schema inference — analyze data and auto-create matching Schemas."""
 
 from __future__ import annotations
 
@@ -32,10 +7,6 @@ from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from dataforge.core import DataForge
-
-# ------------------------------------------------------------------
-# Semantic type detection patterns
-# ------------------------------------------------------------------
 
 _SEMANTIC_PATTERNS: list[tuple[str, _re.Pattern[str], str]] = [
     ("email", _re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$"), "email"),
@@ -66,12 +37,6 @@ _SEMANTIC_PATTERNS: list[tuple[str, _re.Pattern[str], str]] = [
     ("isbn", _re.compile(r"^97[89]-?\d{1,5}-?\d{1,7}-?\d{1,7}-?\d$"), "isbn13"),
 ]
 
-# ------------------------------------------------------------------
-# Column name heuristics (from core.py _FIELD_ALIASES)
-# ------------------------------------------------------------------
-
-
-# Module-level cache for field aliases — populated on first use
 _CACHED_ALIASES: dict[str, str] | None = None
 
 
@@ -85,22 +50,12 @@ def _get_field_aliases() -> dict[str, str]:
     return _CACHED_ALIASES
 
 
-# ------------------------------------------------------------------
-# Type detection
-# ------------------------------------------------------------------
-
-
-# Pre-compiled patterns for fast numeric string detection (avoids try/except overhead)
 _INT_PATTERN = _re.compile(r"^-?\d+$")
 _FLOAT_PATTERN = _re.compile(r"^-?\d+\.\d*$|^-?\d*\.\d+$|^-?\d+[eE][+-]?\d+$")
 
 
 def _detect_base_type(values: list[Any]) -> str:
-    """Detect the base type of a column's values.
-
-    Returns one of: 'str', 'int', 'float', 'bool', 'date',
-    'datetime', 'none', 'mixed'.
-    """
+    """Detect the base type of a column's values."""
     type_counts: dict[str, int] = {}
     _int_match = _INT_PATTERN.match
     _float_match = _FLOAT_PATTERN.match
@@ -110,7 +65,6 @@ def _detect_base_type(values: list[Any]) -> str:
             continue
         t = type(val).__name__
         if t == "str":
-            # Fast regex-based numeric detection (avoids try/except overhead)
             s = val.strip()
             if _int_match(s):
                 type_counts["int"] = type_counts.get("int", 0) + 1
@@ -123,12 +77,10 @@ def _detect_base_type(values: list[Any]) -> str:
                 continue
         type_counts[t] = type_counts.get(t, 0) + 1
 
-    # Remove 'none' for type decision
     non_none = {k: v for k, v in type_counts.items() if k != "none"}
     if not non_none:
         return "none"
     dominant = max(non_none, key=lambda k: non_none[k])
-    # If >80% of non-none values are the same type, use it
     total_non_none = sum(non_none.values())
     if non_none[dominant] / total_non_none >= 0.8:
         return dominant
@@ -140,26 +92,19 @@ def _detect_semantic_type(
     values: list[Any],
     base_type: str,
 ) -> str | None:
-    """Detect the semantic type of a column.
-
-    Returns a DataForge field name or None.
-    """
-    # 1. Try column name heuristic
+    """Detect the semantic type of a column."""
     aliases = _get_field_aliases()
     name_lower = col_name.lower().strip().replace(" ", "_")
     if name_lower in aliases:
         return aliases[name_lower]
 
-    # Also try without common prefixes/suffixes
     for prefix in ("user_", "customer_", "order_", "item_"):
         if name_lower.startswith(prefix):
             stripped = name_lower[len(prefix) :]
             if stripped in aliases:
                 return aliases[stripped]
 
-    # 2. Try regex patterns on string values
     if base_type == "str":
-        # Sample up to 100 non-null string values for pattern detection
         sample = [str(v) for v in values if v is not None and str(v).strip()][:100]
         if sample:
             for _name, pattern, field in _SEMANTIC_PATTERNS:
@@ -167,11 +112,9 @@ def _detect_semantic_type(
                 if matches / len(sample) >= 0.7:
                     return field
 
-    # 3. Type-based fallback
     if base_type == "bool":
         return "boolean"
     if base_type == "int":
-        # Check if it looks like age, port, year, etc.
         if "age" in name_lower:
             return "misc.random_int"
         if "port" in name_lower:
@@ -223,11 +166,6 @@ def _compute_stats(values: list[Any], base_type: str) -> dict[str, Any]:
     return stats
 
 
-# ------------------------------------------------------------------
-# Column analysis result
-# ------------------------------------------------------------------
-
-
 class ColumnAnalysis:
     """Analysis result for a single column."""
 
@@ -263,21 +201,8 @@ class ColumnAnalysis:
         )
 
 
-# ------------------------------------------------------------------
-# SchemaInferrer
-# ------------------------------------------------------------------
-
-
 class SchemaInferrer:
-    """Analyze data sources and build matching DataForge Schemas.
-
-    Parameters
-    ----------
-    forge : DataForge
-        The DataForge instance to create schemas with.
-    sample_size : int
-        Maximum number of rows to sample for analysis.
-    """
+    """Analyze data sources and build matching DataForge Schemas."""
 
     __slots__ = ("_forge", "_sample_size", "_analyses")
 
@@ -290,25 +215,13 @@ class SchemaInferrer:
         self,
         records: list[dict[str, Any]],
     ) -> Any:
-        """Infer a Schema from a list of dicts.
-
-        Parameters
-        ----------
-        records : list[dict[str, Any]]
-            Input data rows.
-
-        Returns
-        -------
-        Schema
-        """
+        """Infer a Schema from a list of dicts."""
         if not records:
             raise ValueError("Cannot infer schema from empty data.")
 
-        # Sample
         sample = records[: self._sample_size]
         columns = list(sample[0].keys())
 
-        # Analyze each column
         self._analyses = []
         field_map: dict[str, str] = {}
         null_fields: dict[str, float] = {}
@@ -343,21 +256,7 @@ class SchemaInferrer:
         delimiter: str = ",",
         encoding: str = "utf-8",
     ) -> Any:
-        """Infer a Schema from a CSV file.
-
-        Parameters
-        ----------
-        path : str
-            Path to the CSV file.
-        delimiter : str
-            Field delimiter.
-        encoding : str
-            File encoding.
-
-        Returns
-        -------
-        Schema
-        """
+        """Infer a Schema from a CSV file."""
         import csv
 
         with open(path, "r", encoding=encoding, newline="") as f:
@@ -371,17 +270,7 @@ class SchemaInferrer:
         return self.from_records(records)
 
     def from_dataframe(self, df: Any) -> Any:
-        """Infer a Schema from a pandas DataFrame.
-
-        Parameters
-        ----------
-        df : pandas.DataFrame
-            Input DataFrame.
-
-        Returns
-        -------
-        Schema
-        """
+        """Infer a Schema from a pandas DataFrame."""
         sample = df.head(self._sample_size)
         records = sample.to_dict("records")
         return self.from_records(records)
@@ -397,17 +286,14 @@ class SchemaInferrer:
         null_rate = _compute_null_rate(values)
         stats = _compute_stats(values, base_type)
 
-        # Determine DataForge field
         dataforge_field: str | None = None
         if semantic_type:
-            # Verify it's a valid field
             try:
                 self._forge._resolve_field(semantic_type)
                 dataforge_field = semantic_type
             except ValueError:
                 dataforge_field = None
 
-        # Fallback: try column name directly
         if dataforge_field is None:
             try:
                 self._forge._resolve_field(col_name)
@@ -415,7 +301,6 @@ class SchemaInferrer:
             except ValueError:
                 pass
 
-        # Last resort: type-based fallback
         if dataforge_field is None:
             if base_type == "bool":
                 dataforge_field = "boolean"
@@ -434,12 +319,7 @@ class SchemaInferrer:
         )
 
     def describe(self) -> str:
-        """Return a human-readable description of the inferred schema.
-
-        Returns
-        -------
-        str
-        """
+        """Return a human-readable description of the inferred schema."""
         if not self._analyses:
             return "No schema has been inferred yet."
 

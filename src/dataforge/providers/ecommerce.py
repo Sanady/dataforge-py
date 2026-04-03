@@ -1,7 +1,5 @@
 """E-commerce provider — products, SKUs, tracking, reviews."""
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
 _PRODUCT_ADJECTIVES: tuple[str, ...] = (
@@ -20,17 +18,6 @@ _PRODUCT_ADJECTIVES: tuple[str, ...] = (
     "Compact",
     "Portable",
     "Wireless",
-    "Digital",
-    "Organic",
-    "Vintage",
-    "Artisan",
-    "Custom",
-    "Heavy-Duty",
-    "Lightweight",
-    "Industrial",
-    "Professional",
-    "Commercial",
-    "Residential",
 )
 
 _PRODUCT_MATERIALS: tuple[str, ...] = (
@@ -49,14 +36,6 @@ _PRODUCT_MATERIALS: tuple[str, ...] = (
     "Marble",
     "Carbon Fiber",
     "Titanium",
-    "Bronze",
-    "Copper",
-    "Linen",
-    "Wool",
-    "Concrete",
-    "Paper",
-    "Foam",
-    "Nylon",
 )
 
 _PRODUCT_ITEMS: tuple[str, ...] = (
@@ -80,31 +59,6 @@ _PRODUCT_ITEMS: tuple[str, ...] = (
     "Pan",
     "Pillow",
     "Blanket",
-    "Towel",
-    "Mirror",
-    "Clock",
-    "Frame",
-    "Shelf",
-    "Desk",
-    "Sofa",
-    "Bench",
-    "Stool",
-    "Rack",
-    "Cabinet",
-    "Drawer",
-    "Basket",
-    "Box",
-    "Case",
-    "Cover",
-    "Mat",
-    "Rug",
-    "Curtain",
-    "Vase",
-    "Candle",
-    "Planter",
-    "Tray",
-    "Hook",
-    "Stand",
 )
 
 _PRODUCT_CATEGORIES: tuple[str, ...] = (
@@ -155,11 +109,6 @@ _REVIEW_TITLES: tuple[str, ...] = (
     "Love it!",
     "Just okay",
     "Works as expected",
-    "Would buy again",
-    "Five stars",
-    "Better than expected",
-    "Fantastic purchase",
-    "Very satisfied",
 )
 
 
@@ -184,6 +133,11 @@ class EcommerceProvider(BaseProvider):
         "order_id": "order_id",
     }
 
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "product_category": _PRODUCT_CATEGORIES,
+        "review_title": _REVIEW_TITLES,
+    }
+
     _CURRENCIES: tuple[tuple[str, str], ...] = (
         ("$", "USD"),
         ("€", "EUR"),
@@ -192,8 +146,6 @@ class EcommerceProvider(BaseProvider):
         ("$", "CAD"),
         ("$", "AUD"),
     )
-
-    # --- Scalar helpers ---
 
     def _one_product_name(self) -> str:
         _c = self._engine.choice
@@ -212,50 +164,18 @@ class EcommerceProvider(BaseProvider):
     def _one_order_id(self) -> str:
         return f"ORD-{self._engine.random_digits_str(10)}"
 
-    # --- Public API ---
-
-    @overload
-    def product_name(self) -> str: ...
-    @overload
-    def product_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def product_name(self, count: int) -> str | list[str]: ...
     def product_name(self, count: int = 1) -> str | list[str]:
         """Generate a fake product name."""
         if count == 1:
             return self._one_product_name()
         return [self._one_product_name() for _ in range(count)]
 
-    @overload
-    def product_category(self) -> str: ...
-    @overload
-    def product_category(self, count: Literal[1]) -> str: ...
-    @overload
-    def product_category(self, count: int) -> str | list[str]: ...
-    def product_category(self, count: int = 1) -> str | list[str]:
-        """Generate a product category."""
-        if count == 1:
-            return self._engine.choice(_PRODUCT_CATEGORIES)
-        return self._engine.choices(_PRODUCT_CATEGORIES, count)
-
-    @overload
-    def sku(self) -> str: ...
-    @overload
-    def sku(self, count: Literal[1]) -> str: ...
-    @overload
-    def sku(self, count: int) -> str | list[str]: ...
     def sku(self, count: int = 1) -> str | list[str]:
         """Generate a product SKU (e.g., ABC-123456)."""
         if count == 1:
             return self._one_sku()
         return [self._one_sku() for _ in range(count)]
 
-    @overload
-    def price_with_currency(self) -> str: ...
-    @overload
-    def price_with_currency(self, count: Literal[1]) -> str: ...
-    @overload
-    def price_with_currency(self, count: int) -> str | list[str]: ...
     def price_with_currency(self, count: int = 1) -> str | list[str]:
         """Generate a price with currency symbol (e.g., $49.99)."""
         if count == 1:
@@ -267,48 +187,18 @@ class EcommerceProvider(BaseProvider):
             f"{_c(self._CURRENCIES)[0]}{_ri(1, 99999) / 100:.2f}" for _ in range(count)
         ]
 
-    @overload
-    def review_rating(self) -> int: ...
-    @overload
-    def review_rating(self, count: Literal[1]) -> int: ...
-    @overload
-    def review_rating(self, count: int) -> int | list[int]: ...
     def review_rating(self, count: int = 1) -> int | list[int]:
         """Generate a review rating (1-5)."""
         if count == 1:
             return self._engine.random_int(1, 5)
         return [self._engine.random_int(1, 5) for _ in range(count)]
 
-    @overload
-    def review_title(self) -> str: ...
-    @overload
-    def review_title(self, count: Literal[1]) -> str: ...
-    @overload
-    def review_title(self, count: int) -> str | list[str]: ...
-    def review_title(self, count: int = 1) -> str | list[str]:
-        """Generate a product review title."""
-        if count == 1:
-            return self._engine.choice(_REVIEW_TITLES)
-        return self._engine.choices(_REVIEW_TITLES, count)
-
-    @overload
-    def tracking_number(self) -> str: ...
-    @overload
-    def tracking_number(self, count: Literal[1]) -> str: ...
-    @overload
-    def tracking_number(self, count: int) -> str | list[str]: ...
     def tracking_number(self, count: int = 1) -> str | list[str]:
         """Generate a shipping tracking number."""
         if count == 1:
             return self._one_tracking()
         return [self._one_tracking() for _ in range(count)]
 
-    @overload
-    def order_id(self) -> str: ...
-    @overload
-    def order_id(self, count: Literal[1]) -> str: ...
-    @overload
-    def order_id(self, count: int) -> str | list[str]: ...
     def order_id(self, count: int = 1) -> str | list[str]:
         """Generate an order ID (e.g., ORD-1234567890)."""
         if count == 1:

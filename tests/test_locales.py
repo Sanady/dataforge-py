@@ -23,8 +23,6 @@ LOCALES = (
 
 
 class TestLocalePersonProvider:
-    """Verify person provider works for all locales."""
-
     @pytest.mark.parametrize("locale", LOCALES)
     def test_first_name(self, locale: str) -> None:
         forge = DataForge(locale=locale, seed=42)
@@ -55,8 +53,6 @@ class TestLocalePersonProvider:
 
 
 class TestLocaleAddressProvider:
-    """Verify address provider works for all locales."""
-
     @pytest.mark.parametrize("locale", LOCALES)
     def test_city(self, locale: str) -> None:
         forge = DataForge(locale=locale, seed=42)
@@ -81,8 +77,6 @@ class TestLocaleAddressProvider:
 
 
 class TestLocaleInternetProvider:
-    """Verify internet provider works for all locales."""
-
     @pytest.mark.parametrize("locale", LOCALES)
     def test_email(self, locale: str) -> None:
         forge = DataForge(locale=locale, seed=42)
@@ -100,8 +94,6 @@ class TestLocaleInternetProvider:
 
 
 class TestLocaleCompanyProvider:
-    """Verify company provider works for all locales."""
-
     @pytest.mark.parametrize("locale", LOCALES)
     def test_company_name(self, locale: str) -> None:
         forge = DataForge(locale=locale, seed=42)
@@ -117,8 +109,6 @@ class TestLocaleCompanyProvider:
 
 
 class TestLocalePhoneProvider:
-    """Verify phone provider works for all locales."""
-
     @pytest.mark.parametrize("locale", LOCALES)
     def test_phone_number(self, locale: str) -> None:
         forge = DataForge(locale=locale, seed=42)

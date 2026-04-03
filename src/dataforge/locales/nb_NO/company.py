@@ -129,9 +129,4 @@ job_titles: tuple[str, ...] = (
     "Kvalitetsleder",
     "Forsker",
     "Analytiker",
-    "Kommunikasjonsrådgiver",
-    "HR-sjef",
-    "Driftsingeniør",
-    "Byggeleder",
-    "Sivilingeniør",
 )

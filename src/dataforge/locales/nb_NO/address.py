@@ -45,16 +45,6 @@ street_names: tuple[str, ...] = (
     "Edvard Griegs",
     "Haakon VIIs",
     "Olav Vs",
-    "Parkveien",
-    "Bogstad",
-    "Smestad",
-    "Majorstu",
-    "Frogner",
-    "Grünerløkka",
-    "Tøyen",
-    "Sagene",
-    "Nydalen",
-    "Ullevål",
 )
 
 street_suffixes: tuple[str, ...] = (

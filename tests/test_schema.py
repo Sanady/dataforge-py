@@ -6,8 +6,6 @@ from dataforge import DataForge, Schema
 
 
 class TestSchemaImport:
-    """Tests that Schema can be imported directly."""
-
     def test_schema_importable(self) -> None:
         assert Schema is not None
 
@@ -18,8 +16,6 @@ class TestSchemaImport:
 
 
 class TestSchemaGenerate:
-    """Tests for Schema.generate()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -51,8 +47,6 @@ class TestSchemaGenerate:
 
 
 class TestSchemaStream:
-    """Tests for Schema.stream()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -72,8 +66,6 @@ class TestSchemaStream:
 
 
 class TestSchemaCsv:
-    """Tests for Schema.to_csv()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -103,8 +95,6 @@ class TestSchemaCsv:
 
 
 class TestSchemaJsonl:
-    """Tests for Schema.to_jsonl()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -126,8 +116,6 @@ class TestSchemaJsonl:
 
 
 class TestSchemaSql:
-    """Tests for Schema.to_sql()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -157,8 +145,6 @@ class TestSchemaSql:
 
 
 class TestSchemaRepr:
-    """Tests for Schema.__repr__()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 

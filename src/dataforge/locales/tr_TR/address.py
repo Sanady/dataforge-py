@@ -41,16 +41,6 @@ street_names: tuple[str, ...] = (
     "Nergis",
     "Karanfil",
     "Yasemin",
-    "Barış",
-    "Özgürlük",
-    "Demokrasi",
-    "Adalet",
-    "Birlik",
-    "Dostluk",
-    "Kardeşlik",
-    "Anadolu",
-    "Trakya",
-    "Kıbrıs",
 )
 
 street_suffixes: tuple[str, ...] = (

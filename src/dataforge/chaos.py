@@ -1,41 +1,10 @@
-"""Chaos mode — inject data quality issues for testing resilience.
-
-A post-processing transformer that injects realistic data quality
-problems: nulls, type mismatches, boundary values, duplicates,
-whitespace issues, encoding chaos, format inconsistencies, and
-truncation.
-
-Usage::
-
-    from dataforge import DataForge
-    from dataforge.chaos import ChaosTransformer
-
-    forge = DataForge(seed=42)
-    schema = forge.schema(["first_name", "email", "age"])
-    rows = schema.generate(count=100)
-
-    chaos = ChaosTransformer(
-        null_rate=0.05,
-        type_mismatch_rate=0.02,
-        boundary_rate=0.01,
-        duplicate_rate=0.03,
-        whitespace_rate=0.02,
-        encoding_rate=0.01,
-        format_rate=0.02,
-        truncation_rate=0.01,
-    )
-    dirty_rows = chaos.transform(rows)
-"""
+"""Chaos mode — inject data quality issues for testing resilience."""
 
 from __future__ import annotations
 
 import random as _random_mod
 from typing import Any
 
-
-# ------------------------------------------------------------------
-# Boundary value catalogs
-# ------------------------------------------------------------------
 
 _BOUNDARY_STR: tuple[str, ...] = (
     "",
@@ -58,17 +27,17 @@ _BOUNDARY_STR: tuple[str, ...] = (
     "Robert'); DROP TABLE students;--",
     "a" * 1000,
     "\x00",
-    "\ufeff",  # BOM
+    "\ufeff",
 )
 
 _BOUNDARY_INT: tuple[Any, ...] = (
     0,
     -1,
     1,
-    -2147483648,  # INT32_MIN
-    2147483647,  # INT32_MAX
-    -9223372036854775808,  # INT64_MIN
-    9223372036854775807,  # INT64_MAX
+    -2147483648,
+    2147483647,
+    -9223372036854775808,
+    9223372036854775807,
     "not_a_number",
     "",
     None,
@@ -82,8 +51,8 @@ _BOUNDARY_FLOAT: tuple[Any, ...] = (
     float("inf"),
     float("-inf"),
     float("nan"),
-    1e-308,  # near MIN_FLOAT
-    1e308,  # near MAX_FLOAT
+    1e-308,
+    1e308,
     "not_a_number",
     "",
     None,
@@ -96,66 +65,40 @@ _BOUNDARY_DATE: tuple[str, ...] = (
     "2038-01-19",
     "not-a-date",
     "",
-    "2024-02-30",  # invalid day
-    "2024-13-01",  # invalid month
+    "2024-02-30",
+    "2024-13-01",
 )
 
-# Unicode edge cases for encoding chaos
 _UNICODE_CHAOS: tuple[str, ...] = (
-    "\u200b",  # zero-width space
-    "\u200e",  # left-to-right mark
-    "\u200f",  # right-to-left mark
-    "\u00e9",  # é
-    "\u00f1",  # ñ
-    "\u00fc",  # ü
-    "\u4e2d",  # Chinese character
-    "\U0001f600",  # emoji
-    "\u202e",  # right-to-left override
-    "\ufeff",  # BOM
-    "\u0000",  # null
-    "\ud83d",  # lone surrogate (may cause issues)
+    "\u200b",
+    "\u200e",
+    "\u200f",
+    "\u00e9",
+    "\u00f1",
+    "\u00fc",
+    "\u4e2d",
+    "\U0001f600",
+    "\u202e",
+    "\ufeff",
+    "\u0000",
+    "\ud83d",
 )
 
-# Whitespace variants
 _WHITESPACE_CHAOS: tuple[str, ...] = (
-    " ",  # extra leading space
-    "  ",  # double space
-    "\t",  # tab
-    " \t",  # mixed
-    "\n",  # newline
-    "\r",  # carriage return
-    "\u00a0",  # non-breaking space
-    "\u2003",  # em space
-    "\u200b",  # zero-width space
+    " ",
+    "  ",
+    "\t",
+    " \t",
+    "\n",
+    "\r",
+    "\u00a0",
+    "\u2003",
+    "\u200b",
 )
 
 
 class ChaosTransformer:
-    """Inject data quality issues into generated data.
-
-    All rates are probabilities (0.0–1.0) applied per-cell.
-
-    Parameters
-    ----------
-    null_rate : float
-        Probability of replacing a value with None.
-    type_mismatch_rate : float
-        Probability of injecting a type-mismatched value.
-    boundary_rate : float
-        Probability of injecting a boundary/edge-case value.
-    duplicate_rate : float
-        Probability of duplicating a random existing row.
-    whitespace_rate : float
-        Probability of adding whitespace chaos to string values.
-    encoding_rate : float
-        Probability of injecting unicode edge cases into strings.
-    format_rate : float
-        Probability of format inconsistency (case, separators).
-    truncation_rate : float
-        Probability of truncating string values.
-    seed : int | None
-        Optional seed for reproducibility.
-    """
+    """Inject data quality issues into generated data."""
 
     __slots__ = (
         "_null_rate",
@@ -196,28 +139,12 @@ class ChaosTransformer:
         rows: list[dict[str, Any]],
         columns: list[str] | None = None,
     ) -> list[dict[str, Any]]:
-        """Apply chaos transformations to rows.
-
-        Parameters
-        ----------
-        rows : list[dict[str, Any]]
-            Input rows (will NOT be modified in place — copies are made).
-        columns : list[str] | None
-            Specific columns to apply chaos to. If None, all columns
-            are eligible.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            Transformed rows with injected data quality issues.
-        """
+        """Apply chaos transformations to rows."""
         if not rows:
             return rows
 
         rng = self._rng
 
-        # Pre-check which cell-level transformations are active to avoid
-        # checking rates that are 0 in the inner loop.
         null_rate = self._null_rate
         type_mismatch_rate = self._type_mismatch_rate
         boundary_rate = self._boundary_rate
@@ -238,7 +165,6 @@ class ChaosTransformer:
 
         target_cols = columns or list(rows[0].keys())
 
-        # Only copy rows if we have cell-level transforms to apply
         if has_any_cell_transform:
             result: list[dict[str, Any]] = [dict(row) for row in rows]
             _random = rng.random
@@ -248,22 +174,18 @@ class ChaosTransformer:
                         continue
                     val = row[col]
 
-                    # Null injection
                     if null_rate > 0 and _random() < null_rate:
                         row[col] = None
                         continue
 
-                    # Type mismatch
                     if type_mismatch_rate > 0 and _random() < type_mismatch_rate:
                         row[col] = self._inject_type_mismatch(val, rng)
                         continue
 
-                    # Boundary values
                     if boundary_rate > 0 and _random() < boundary_rate:
                         row[col] = self._inject_boundary(val, rng)
                         continue
 
-                    # String-specific transformations
                     if isinstance(val, str):
                         if whitespace_rate > 0 and _random() < whitespace_rate:
                             row[col] = self._inject_whitespace(val, rng)
@@ -281,10 +203,8 @@ class ChaosTransformer:
                             row[col] = self._inject_truncation(val, rng)
                             continue
         else:
-            # No cell-level transforms — still need copies for duplicate injection
             result = [dict(row) for row in rows]
 
-        # Row-level: duplicate injection
         if self._duplicate_rate > 0 and len(result) > 1:
             n_dups = rng.binomialvariate(len(result), self._duplicate_rate)
             for _ in range(n_dups):
@@ -309,7 +229,6 @@ class ChaosTransformer:
     def _inject_boundary(val: Any, rng: _random_mod.Random) -> Any:
         """Replace value with a boundary/edge-case value."""
         if isinstance(val, str):
-            # Detect if it looks like a date
             if len(val) == 10 and val[4:5] == "-" and val[7:8] == "-":
                 return rng.choice(_BOUNDARY_DATE)
             return rng.choice(_BOUNDARY_STR)
@@ -325,11 +244,10 @@ class ChaosTransformer:
         chaos = rng.choice(_WHITESPACE_CHAOS)
         action = rng.randint(0, 2)
         if action == 0:
-            return chaos + val  # prepend
+            return chaos + val
         elif action == 1:
-            return val + chaos  # append
+            return val + chaos
         else:
-            # Insert in middle
             if len(val) > 1:
                 pos = rng.randint(1, len(val) - 1)
                 return val[:pos] + chaos + val[pos:]
@@ -361,10 +279,8 @@ class ChaosTransformer:
         elif action == 2:
             return val.title()
         elif action == 3:
-            # Random case
             return "".join(c.upper() if rng.random() > 0.5 else c.lower() for c in val)
         else:
-            # Replace separators
             for old, new in [("-", "/"), ("/", "-"), (" ", "_"), ("_", " ")]:
                 if old in val:
                     return val.replace(old, new)

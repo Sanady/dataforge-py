@@ -12,8 +12,6 @@ from dataforge.locales.en_US.address import (
 
 
 class TestAddressScalar:
-    """Tests for single-item address generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -96,8 +94,6 @@ class TestAddressScalar:
 
 
 class TestAddressBatch:
-    """Tests for batch address generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 

@@ -4,8 +4,6 @@ All barcodes include valid check digits computed per their respective
 standards. This provider is locale-independent.
 """
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
 
@@ -50,9 +48,7 @@ class BarcodeProvider(BaseProvider):
         "isbn10": "isbn10",
     }
 
-    # ------------------------------------------------------------------
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_ean13(self) -> str:
         body = self._engine.random_digits_str(12)
@@ -72,78 +68,28 @@ class BarcodeProvider(BaseProvider):
         body = self._engine.random_digits_str(9)
         return body + _isbn10_check_digit(body)
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
-    @overload
-    def ean13(self) -> str: ...
-    @overload
-    def ean13(self, count: Literal[1]) -> str: ...
-    @overload
-    def ean13(self, count: int) -> str | list[str]: ...
     def ean13(self, count: int = 1) -> str | list[str]:
-        """Generate a random EAN-13 barcode (13 digits, valid check digit).
-
-        Parameters
-        ----------
-        count : int
-            Number of barcodes to generate.
-        """
+        """Generate a random EAN-13 barcode (13 digits, valid check digit)."""
         if count == 1:
             return self._one_ean13()
         return [self._one_ean13() for _ in range(count)]
 
-    @overload
-    def ean8(self) -> str: ...
-    @overload
-    def ean8(self, count: Literal[1]) -> str: ...
-    @overload
-    def ean8(self, count: int) -> str | list[str]: ...
     def ean8(self, count: int = 1) -> str | list[str]:
-        """Generate a random EAN-8 barcode (8 digits, valid check digit).
-
-        Parameters
-        ----------
-        count : int
-            Number of barcodes to generate.
-        """
+        """Generate a random EAN-8 barcode (8 digits, valid check digit)."""
         if count == 1:
             return self._one_ean8()
         return [self._one_ean8() for _ in range(count)]
 
-    @overload
-    def isbn13(self) -> str: ...
-    @overload
-    def isbn13(self, count: Literal[1]) -> str: ...
-    @overload
-    def isbn13(self, count: int) -> str | list[str]: ...
     def isbn13(self, count: int = 1) -> str | list[str]:
-        """Generate a random ISBN-13 (starts with 978/979, valid check digit).
-
-        Parameters
-        ----------
-        count : int
-            Number of ISBNs to generate.
-        """
+        """Generate a random ISBN-13 (starts with 978/979, valid check digit)."""
         if count == 1:
             return self._one_isbn13()
         return [self._one_isbn13() for _ in range(count)]
 
-    @overload
-    def isbn10(self) -> str: ...
-    @overload
-    def isbn10(self, count: Literal[1]) -> str: ...
-    @overload
-    def isbn10(self, count: int) -> str | list[str]: ...
     def isbn10(self, count: int = 1) -> str | list[str]:
-        """Generate a random ISBN-10 (9 digits + check character).
-
-        Parameters
-        ----------
-        count : int
-            Number of ISBNs to generate.
-        """
+        """Generate a random ISBN-10 (9 digits + check character)."""
         if count == 1:
             return self._one_isbn10()
         return [self._one_isbn10() for _ in range(count)]

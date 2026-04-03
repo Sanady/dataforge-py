@@ -19,8 +19,6 @@ def _luhn_valid(number: str) -> bool:
 
 
 class TestFinanceScalar:
-    """Tests for single-item finance generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -138,7 +136,6 @@ class TestFinanceScalar:
             assert result.isdigit()
 
     def test_routing_number_aba_checksum(self) -> None:
-        """Verify ABA checksum is valid."""
         for _ in range(100):
             rn = self.forge.finance.routing_number()
             digits = [int(d) for d in rn]
@@ -155,8 +152,6 @@ class TestFinanceScalar:
 
 
 class TestFinanceBatch:
-    """Tests for batch finance generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 

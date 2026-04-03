@@ -80,31 +80,6 @@ last_names: tuple[str, ...] = (
     "Pawar",
     "More",
     "Ghosh",
-    "Mukherjee",
-    "Chatterjee",
-    "Banerjee",
-    "Das",
-    "Bose",
-    "Sen",
-    "Roy",
-    "Dutta",
-    "Nath",
-    "Prasad",
-    "Sinha",
-    "Jha",
-    "Thakkar",
-    "Raghavan",
-    "Krishnamurthy",
-    "Subramaniam",
-    "Naidu",
-    "Rajan",
-    "Hegde",
-    "Shetty",
-    "Rao",
-    "Pillai",
-    "Choudhury",
-    "Dixit",
-    "Mathur",
 )
 
 male_first_names: tuple[str, ...] = (
@@ -211,7 +186,6 @@ female_first_names: tuple[str, ...] = (
     "Preeti",
     "Garima",
     "Simran",
-    "Aparna",
 )
 
 # Computed from gendered tuples — single source of truth

@@ -5,8 +5,6 @@ from dataforge.locales.en_US.person import first_names, last_names
 
 
 class TestPersonScalar:
-    """Tests for single-item person generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -50,8 +48,6 @@ class TestPersonScalar:
 
 
 class TestPersonBatch:
-    """Tests for batch person generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 

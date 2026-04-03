@@ -11,8 +11,6 @@ from dataforge import DataForge
 
 
 class TestToDict:
-    """Tests for DataForge.to_dict()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -61,7 +59,6 @@ class TestToDict:
         assert rows1 == rows2
 
     def test_all_provider_fields(self) -> None:
-        """Verify that shorthand fields from various providers work."""
         fields = [
             "first_name",
             "last_name",
@@ -82,8 +79,6 @@ class TestToDict:
 
 
 class TestToCsv:
-    """Tests for DataForge.to_csv()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -130,8 +125,6 @@ class TestToCsv:
 
 
 class TestToJsonl:
-    """Tests for DataForge.to_jsonl()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -169,8 +162,6 @@ class TestToJsonl:
 
 
 class TestToSql:
-    """Tests for DataForge.to_sql()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -207,8 +198,6 @@ class TestToSql:
 
 
 class TestCopy:
-    """Tests for DataForge.copy()."""
-
     def test_copy_returns_new_instance(self) -> None:
         forge = DataForge(locale="en_US", seed=42)
         copy = forge.copy()
@@ -224,13 +213,10 @@ class TestCopy:
 
 
 class TestToDataframe:
-    """Tests for DataForge.to_dataframe()."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
     def test_requires_pandas(self) -> None:
-        """to_dataframe should work if pandas is installed, or raise if not."""
         try:
             import pandas  # noqa: F401
 

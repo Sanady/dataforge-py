@@ -19,9 +19,7 @@ from dataforge.streaming import (
 )
 
 
-# ------------------------------------------------------------------
 # Fixtures
-# ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -34,9 +32,7 @@ def schema(forge: DataForge):
     return forge.schema(["first_name", "email"])
 
 
-# ------------------------------------------------------------------
 # TokenBucketRateLimiter
-# ------------------------------------------------------------------
 
 
 class TestTokenBucketRateLimiter:
@@ -71,9 +67,7 @@ class TestTokenBucketRateLimiter:
             limiter.nonexistent = True  # type: ignore[attr-defined]
 
 
-# ------------------------------------------------------------------
 # StreamEmitter (abstract base)
-# ------------------------------------------------------------------
 
 
 class TestStreamEmitter:
@@ -121,9 +115,7 @@ class TestStreamEmitter:
             emitter.nonexistent = True  # type: ignore[attr-defined]
 
 
-# ------------------------------------------------------------------
 # HttpEmitter
-# ------------------------------------------------------------------
 
 
 class TestHttpEmitter:
@@ -173,9 +165,7 @@ class TestHttpEmitter:
         assert mock_urlopen.call_count == 2
 
 
-# ------------------------------------------------------------------
 # KafkaEmitter
-# ------------------------------------------------------------------
 
 
 class TestKafkaEmitter:
@@ -206,9 +196,7 @@ class TestKafkaEmitter:
             emitter.nonexistent = True  # type: ignore[attr-defined]
 
 
-# ------------------------------------------------------------------
 # RabbitMQEmitter
-# ------------------------------------------------------------------
 
 
 class TestRabbitMQEmitter:
@@ -248,9 +236,7 @@ class TestRabbitMQEmitter:
         emitter.close()
 
 
-# ------------------------------------------------------------------
 # stream_to_emitter helper
-# ------------------------------------------------------------------
 
 
 class TestStreamToEmitter:

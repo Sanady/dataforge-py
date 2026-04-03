@@ -41,16 +41,6 @@ street_names: tuple[str, ...] = (
     "Tall",
     "Torg",
     "Trädgårds",
-    "Tull",
-    "Upp",
-    "Vallmo",
-    "Vatten",
-    "Vinter",
-    "Väder",
-    "Västra",
-    "Ängs",
-    "Östra",
-    "Övre",
 )
 
 street_suffixes: tuple[str, ...] = (

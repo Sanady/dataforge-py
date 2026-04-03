@@ -4,8 +4,6 @@ from dataforge import DataForge
 
 
 class TestCompanyScalar:
-    """Tests for single-item company generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -32,8 +30,6 @@ class TestCompanyScalar:
 
 
 class TestCompanyBatch:
-    """Tests for batch company generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -54,8 +50,6 @@ class TestCompanyBatch:
 
 
 class TestCompanyLocales:
-    """Tests for company across locales."""
-
     def test_de_DE_company(self) -> None:
         forge = DataForge(locale="de_DE", seed=42)
         name = forge.company.company_name()

@@ -153,7 +153,6 @@ class TestAiPromptInSchema:
             assert len(row["system_prompt"]) > 0
 
     def test_schema_all_fields(self) -> None:
-        """All _field_map entries should be resolvable."""
         fields = [
             "user_prompt",
             "coding_prompt",

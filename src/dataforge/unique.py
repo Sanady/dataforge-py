@@ -1,26 +1,4 @@
-"""UniqueProxy — wrapper for unique value generation.
-
-Intercepts provider method calls and ensures each returned value is
-unique within the lifetime of the proxy (or until :meth:`clear` is
-called).
-
-Usage::
-
-    forge = DataForge(seed=42)
-    forge.unique.person.first_name()   # guaranteed unique per call
-    forge.unique.clear()               # reset tracking
-
-Performance
------------
-The proxy adds a thin ``set``-membership check per scalar value
-(O(1) amortised) and retries on collision.  Batch calls are
-generated in bulk with a single ``set`` deduplication pass,
-requesting extra items to compensate for expected collisions.
-
-The proxy itself is **lazily created** — accessing ``forge.unique``
-for the first time constructs it; all subsequent accesses return
-the cached instance.
-"""
+"""UniqueProxy — wrapper for unique value generation."""
 
 from __future__ import annotations
 
@@ -67,7 +45,6 @@ class _UniqueMethodWrapper:
         max_total_retries = count * 100
 
         retries = 0
-        # Start with 20% over-sample; adapt based on collision rate
         oversample_ratio = 0.20
         while remaining > 0:
             if retries > max_total_retries:
@@ -76,7 +53,6 @@ class _UniqueMethodWrapper:
                     f"{retries} retries for {self._method!r}. "
                     f"Generated {len(result)}/{count}."
                 )
-            # Adaptive: increase over-sampling as saturation grows
             request = remaining + max(int(remaining * oversample_ratio), 10)
             batch = method(count=request, **kwargs)
             batch_collisions = 0
@@ -91,10 +67,8 @@ class _UniqueMethodWrapper:
                     retries += 1
                     batch_collisions += 1
 
-            # Adapt over-sample ratio based on collision rate in this batch
             if batch_collisions > 0 and len(batch) > 0:
                 collision_rate = batch_collisions / len(batch)
-                # Scale up: at 50% collision rate, request 2x; at 90%, ~10x
                 oversample_ratio = min(
                     collision_rate / (1 - collision_rate + 0.01), 10.0
                 )
@@ -133,20 +107,7 @@ class _UniqueProviderProxy:
 
 
 class UniqueProxy:
-    """Top-level unique proxy — accessed via ``forge.unique``.
-
-    Lazily wraps each provider the first time it is accessed.
-    Maintains per-method seen-value sets across calls.
-
-    Examples
-    --------
-    >>> forge = DataForge(seed=42)
-    >>> a = forge.unique.person.first_name()
-    >>> b = forge.unique.person.first_name()
-    >>> a != b  # guaranteed unique
-    True
-    >>> forge.unique.clear()  # reset all tracking
-    """
+    """Top-level unique proxy — accessed via ``forge.unique``."""
 
     __slots__ = ("_forge", "_proxies")
 
@@ -166,14 +127,7 @@ class UniqueProxy:
         return provider
 
     def clear(self, provider_name: str | None = None) -> None:
-        """Clear tracked unique values.
-
-        Parameters
-        ----------
-        provider_name : str | None
-            If given, clear only that provider's tracking.
-            If ``None``, clear all providers.
-        """
+        """Clear tracked unique values."""
         if provider_name is not None:
             proxy = self._proxies.get(provider_name)
             if proxy is not None:

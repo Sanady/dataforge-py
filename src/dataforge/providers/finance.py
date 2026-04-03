@@ -1,7 +1,5 @@
 """Finance provider — generates fake credit card numbers, IBANs, currencies."""
 
-from typing import Literal, overload
-
 from dataforge.providers.base import BaseProvider
 
 # Credit card prefixes by network (BIN ranges)
@@ -192,9 +190,14 @@ class FinanceProvider(BaseProvider):
         "bitcoin_address": "bitcoin_address",
     }
 
-    # ------------------------------------------------------------------
+    _choice_fields: dict[str, tuple[str, ...]] = {
+        "currency_code": _CURRENCY_CODES,
+        "currency_name": _CURRENCY_NAMES,
+        "currency_symbol": _CURRENCY_SYMBOLS,
+        "card_type": _CARD_TYPE_NAMES,
+    }
+
     # Scalar helpers
-    # ------------------------------------------------------------------
 
     def _one_credit_card_number(self) -> str:
         _, prefix, length = self._engine.choice(_CARD_TYPES)
@@ -274,157 +277,50 @@ class FinanceProvider(BaseProvider):
         chars = self._engine._rng.choices(_BASE58_STR, k=length)
         return "1" + "".join(chars)
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
-    @overload
-    def credit_card_number(self) -> str: ...
-    @overload
-    def credit_card_number(self, count: Literal[1]) -> str: ...
-    @overload
-    def credit_card_number(self, count: int) -> str | list[str]: ...
     def credit_card_number(self, count: int = 1) -> str | list[str]:
-        """Generate a random credit card number (Luhn-valid).
-
-        Parameters
-        ----------
-        count : int
-            Number of card numbers to generate.
-        """
+        """Generate a random credit card number (Luhn-valid)."""
         if count == 1:
             return self._one_credit_card_number()
         return [self._one_credit_card_number() for _ in range(count)]
 
-    @overload
-    def credit_card(self) -> dict[str, str]: ...
-    @overload
-    def credit_card(self, count: Literal[1]) -> dict[str, str]: ...
-    @overload
-    def credit_card(self, count: int) -> dict[str, str] | list[dict[str, str]]: ...
     def credit_card(self, count: int = 1) -> dict[str, str] | list[dict[str, str]]:
-        """Generate a full credit card (number, type, expiry, CVV).
-
-        Parameters
-        ----------
-        count : int
-            Number of cards to generate.
-        """
+        """Generate a full credit card (number, type, expiry, CVV)."""
         if count == 1:
             return self._one_credit_card()
         return [self._one_credit_card() for _ in range(count)]
 
-    @overload
-    def card_type(self) -> str: ...
-    @overload
-    def card_type(self, count: Literal[1]) -> str: ...
-    @overload
-    def card_type(self, count: int) -> str | list[str]: ...
-    def card_type(self, count: int = 1) -> str | list[str]:
-        """Generate a random credit card network name.
-
-        Parameters
-        ----------
-        count : int
-            Number of card types to generate.
-        """
-        types = _CARD_TYPE_NAMES
+    def cvv(self, count: int = 1) -> str | list[str]:
+        """Generate a random CVV (3 digits)."""
         if count == 1:
-            return self._engine.choice(types)
-        return self._engine.choices(types, count)
+            return self._engine.random_digits_str(3)
+        return [self._engine.random_digits_str(3) for _ in range(count)]
 
-    @overload
-    def iban(self) -> str: ...
-    @overload
-    def iban(self, count: Literal[1]) -> str: ...
-    @overload
-    def iban(self, count: int) -> str | list[str]: ...
+    def expiry_date(self, count: int = 1) -> str | list[str]:
+        """Generate a random credit card expiry date (MM/YY)."""
+        if count == 1:
+            m = str(self._engine.random_int(1, 12)).zfill(2)
+            y = str(self._engine.random_int(25, 30))
+            return f"{m}/{y}"
+        result: list[str] = []
+        _ri = self._engine.random_int
+        for _ in range(count):
+            m = str(_ri(1, 12)).zfill(2)
+            y = str(_ri(25, 30))
+            result.append(f"{m}/{y}")
+        return result
+
     def iban(self, count: int = 1) -> str | list[str]:
-        """Generate a random IBAN.
-
-        Parameters
-        ----------
-        count : int
-            Number of IBANs to generate.
-        """
+        """Generate a random IBAN."""
         if count == 1:
             return self._one_iban()
         return [self._one_iban() for _ in range(count)]
 
-    @overload
-    def currency_code(self) -> str: ...
-    @overload
-    def currency_code(self, count: Literal[1]) -> str: ...
-    @overload
-    def currency_code(self, count: int) -> str | list[str]: ...
-    def currency_code(self, count: int = 1) -> str | list[str]:
-        """Generate a random ISO 4217 currency code (e.g. ``"USD"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of codes to generate.
-        """
-        if count == 1:
-            return self._engine.choice(_CURRENCY_CODES)
-        return self._engine.choices(_CURRENCY_CODES, count)
-
-    @overload
-    def currency_name(self) -> str: ...
-    @overload
-    def currency_name(self, count: Literal[1]) -> str: ...
-    @overload
-    def currency_name(self, count: int) -> str | list[str]: ...
-    def currency_name(self, count: int = 1) -> str | list[str]:
-        """Generate a random currency name (e.g. ``"US Dollar"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of names to generate.
-        """
-        if count == 1:
-            return self._engine.choice(_CURRENCY_NAMES)
-        return self._engine.choices(_CURRENCY_NAMES, count)
-
-    @overload
-    def currency_symbol(self) -> str: ...
-    @overload
-    def currency_symbol(self, count: Literal[1]) -> str: ...
-    @overload
-    def currency_symbol(self, count: int) -> str | list[str]: ...
-    def currency_symbol(self, count: int = 1) -> str | list[str]:
-        """Generate a random currency symbol (e.g. ``"$"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of symbols to generate.
-        """
-        if count == 1:
-            return self._engine.choice(_CURRENCY_SYMBOLS)
-        return self._engine.choices(_CURRENCY_SYMBOLS, count)
-
-    @overload
-    def price(self) -> str: ...
-    @overload
-    def price(self, count: Literal[1]) -> str: ...
-    @overload
-    def price(self, count: int) -> str | list[str]: ...
     def price(
         self, count: int = 1, min_val: float = 0.99, max_val: float = 9999.99
     ) -> str | list[str]:
-        """Generate a random price string (e.g. ``"49.99"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of prices to generate.
-        min_val : float
-            Minimum price value.
-        max_val : float
-            Maximum price value.
-        """
+        """Generate a random price string (e.g. ``"49.99"``)."""
         min_cents = int(min_val * 100)
         max_cents = int(max_val * 100)
         if count == 1:
@@ -433,20 +329,8 @@ class FinanceProvider(BaseProvider):
         _ri = self._engine.random_int
         return [f"{_ri(min_cents, max_cents) / 100:.2f}" for _ in range(count)]
 
-    @overload
-    def bic(self) -> str: ...
-    @overload
-    def bic(self, count: Literal[1]) -> str: ...
-    @overload
-    def bic(self, count: int) -> str | list[str]: ...
     def bic(self, count: int = 1) -> str | list[str]:
-        """Generate a random BIC/SWIFT code (e.g. ``"DEUTDEFFXXX"``).
-
-        Parameters
-        ----------
-        count : int
-            Number of BIC codes to generate.
-        """
+        """Generate a random BIC/SWIFT code (e.g. ``"DEUTDEFFXXX"``)."""
         if count == 1:
             return self._one_bic()
         # Inlined batch loop with local-bound choices
@@ -456,20 +340,8 @@ class FinanceProvider(BaseProvider):
             for _ in range(count)
         ]
 
-    @overload
-    def routing_number(self) -> str: ...
-    @overload
-    def routing_number(self, count: Literal[1]) -> str: ...
-    @overload
-    def routing_number(self, count: int) -> str | list[str]: ...
     def routing_number(self, count: int = 1) -> str | list[str]:
-        """Generate a random US ABA routing number with valid checksum.
-
-        Parameters
-        ----------
-        count : int
-            Number of routing numbers to generate.
-        """
+        """Generate a random US ABA routing number with valid checksum."""
         if count == 1:
             return self._one_routing_number()
         # Inlined batch with local-bound helpers
@@ -505,20 +377,8 @@ class FinanceProvider(BaseProvider):
             result.append(f"{d1}{d2}{mid}{check}")
         return result
 
-    @overload
-    def bitcoin_address(self) -> str: ...
-    @overload
-    def bitcoin_address(self, count: Literal[1]) -> str: ...
-    @overload
-    def bitcoin_address(self, count: int) -> str | list[str]: ...
     def bitcoin_address(self, count: int = 1) -> str | list[str]:
-        """Generate a random Bitcoin address (P2PKH format, starts with ``1``).
-
-        Parameters
-        ----------
-        count : int
-            Number of addresses to generate.
-        """
+        """Generate a random Bitcoin address (P2PKH format, starts with ``1``)."""
         if count == 1:
             return self._one_bitcoin_address()
         # Inlined batch loop — use modular indexing into BASE58 alphabet

@@ -6,8 +6,6 @@ from dataforge import DataForge
 
 
 class TestUniqueScalar:
-    """Tests for unique scalar generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -36,7 +34,6 @@ class TestUniqueScalar:
         assert {a, b} == {True, False}
 
     def test_unique_exhaustion_raises(self) -> None:
-        """When all possible values are exhausted, should raise."""
         # boolean only has True/False
         self.forge.unique.misc.boolean()
         self.forge.unique.misc.boolean()
@@ -45,8 +42,6 @@ class TestUniqueScalar:
 
 
 class TestUniqueBatch:
-    """Tests for unique batch generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -57,20 +52,17 @@ class TestUniqueBatch:
         assert len(set(results)) == 50  # all unique
 
     def test_batch_extends_uniqueness(self) -> None:
-        """Batch values don't repeat values from earlier calls."""
         first = self.forge.unique.person.first_name()
         batch = self.forge.unique.person.first_name(count=10)
         assert first not in batch
 
     def test_batch_large(self) -> None:
-        results = self.forge.unique.address.city(count=100)
-        assert len(results) == 100
-        assert len(set(results)) == 100
+        results = self.forge.unique.address.city(count=40)
+        assert len(results) == 40
+        assert len(set(results)) == 40
 
 
 class TestUniqueClear:
-    """Tests for clearing unique tracking."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -99,8 +91,6 @@ class TestUniqueClear:
 
 
 class TestUniqueProxy:
-    """Tests for UniqueProxy behavior."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 

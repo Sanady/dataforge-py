@@ -1,31 +1,4 @@
-"""Data anonymization — deterministic PII replacement with referential integrity.
-
-Replaces personally identifiable information (PII) with realistic fake
-data using deterministic HMAC-SHA256 seeding for consistency: the same
-real value always maps to the same fake value across tables and runs.
-
-Usage::
-
-    from dataforge import DataForge
-    from dataforge.anonymizer import Anonymizer
-
-    forge = DataForge(seed=42)
-    anon = Anonymizer(forge, secret="my-secret-key")
-
-    # Anonymize a list of dicts
-    original = [
-        {"name": "Alice Smith", "email": "alice@real.com", "ssn": "123-45-6789"},
-        {"name": "Bob Jones", "email": "bob@real.com", "ssn": "987-65-4321"},
-    ]
-    anonymized = anon.anonymize(original, fields={
-        "name": "full_name",
-        "email": "email",
-        "ssn": "ssn",
-    })
-
-    # Streaming CSV anonymization
-    anon.anonymize_csv("input.csv", "output.csv", fields={...})
-"""
+"""Data anonymization — deterministic PII replacement with referential integrity."""
 
 from __future__ import annotations
 
@@ -38,36 +11,20 @@ if TYPE_CHECKING:
 
 
 class Anonymizer:
-    """Deterministic PII anonymizer with consistent value mappings.
-
-    Uses HMAC-SHA256 to derive deterministic seeds from (secret + original_value),
-    ensuring the same input always produces the same fake output. This
-    preserves referential integrity across tables automatically.
-
-    Parameters
-    ----------
-    forge : DataForge
-        The DataForge instance for generating fake values.
-    secret : str
-        Secret key for HMAC derivation. Different secrets produce
-        different anonymizations. Keep this secret to prevent
-        de-anonymization.
-    """
+    """Deterministic PII anonymizer with consistent value mappings."""
 
     __slots__ = ("_forge", "_secret", "_cache", "_field_methods")
 
     def __init__(self, forge: DataForge, secret: str = "dataforge-anonymizer") -> None:
         self._forge = forge
         self._secret = secret.encode("utf-8")
-        self._cache: dict[tuple[str, str], Any] = {}  # (field, original) → fake
-        # Cache resolved field methods to avoid repeated _resolve_field calls
+        self._cache: dict[tuple[str, str], Any] = {}
         self._field_methods: dict[str, Any] = {}
 
     def _derive_seed(self, field: str, value: str) -> int:
         """Derive a deterministic integer seed from field name and value."""
         msg = f"{field}:{value}".encode("utf-8")
         digest = _hmac.new(self._secret, msg, _hashlib.sha256).digest()
-        # Use first 8 bytes as seed (64-bit)
         return int.from_bytes(digest[:8], "big")
 
     def _get_method(self, field: str) -> Any:
@@ -95,17 +52,11 @@ class Anonymizer:
 
         seed = self._derive_seed(field, str_val)
 
-        # Instead of creating a full DataForge copy, re-seed the RNG
-        # of a lightweight forge copy.  We use copy() only once and
-        # rely on the cache to amortize the cost.
         method = self._get_method(field)
         if method is not None:
-            # Save and restore the forge's RNG state to get deterministic output
-            # without creating a new forge instance.
             import random as _random_mod
 
             temp_rng = _random_mod.Random(seed)
-            # Swap the engine's RNG temporarily for deterministic generation
             engine = self._forge._engine
             orig_rng = engine._rng
             engine._rng = temp_rng
@@ -114,7 +65,6 @@ class Anonymizer:
             finally:
                 engine._rng = orig_rng
         else:
-            # Fallback: just hash the value
             fake_val = (
                 _hmac.new(
                     self._secret, str_val.encode("utf-8"), _hashlib.sha256
@@ -123,11 +73,9 @@ class Anonymizer:
                 else ""
             )
 
-        # Format-preserving for emails
         if field in ("email", "internet.email") and isinstance(original_value, str):
             fake_val = self._format_preserve_email(fake_val, original_value)
 
-        # Format-preserving for phone numbers
         if field in ("phone_number", "phone.phone_number") and isinstance(
             original_value, str
         ):
@@ -142,7 +90,6 @@ class Anonymizer:
         fake_str = str(fake)
         if "@" in fake_str:
             return fake_str
-        # If fake doesn't have @, construct one
         if "@" in original:
             _, domain = original.rsplit("@", 1)
             return f"{fake_str}@{domain}"
@@ -152,10 +99,8 @@ class Anonymizer:
     def _format_preserve_phone(fake: Any, original: str) -> str:
         """Try to preserve phone number format (length and separators)."""
         fake_str = str(fake)
-        # If lengths match, return as-is
         if len(fake_str) == len(original):
             return fake_str
-        # Try to match the original format
         result = []
         fake_digits = [c for c in fake_str if c.isdigit()]
         d_idx = 0
@@ -175,21 +120,7 @@ class Anonymizer:
         rows: list[dict[str, Any]],
         fields: dict[str, str],
     ) -> list[dict[str, Any]]:
-        """Anonymize a list of row dicts.
-
-        Parameters
-        ----------
-        rows : list[dict[str, Any]]
-            Input rows (not modified in place).
-        fields : dict[str, str]
-            Mapping of column name → DataForge field name.
-            Only specified columns are anonymized; others pass through.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            Anonymized rows.
-        """
+        """Anonymize a list of row dicts."""
         result: list[dict[str, Any]] = []
         for row in rows:
             new_row = dict(row)
@@ -210,28 +141,7 @@ class Anonymizer:
         encoding: str = "utf-8",
         batch_size: int = 1000,
     ) -> int:
-        """Anonymize a CSV file in streaming fashion.
-
-        Parameters
-        ----------
-        input_path : str
-            Path to input CSV.
-        output_path : str
-            Path to output CSV.
-        fields : dict[str, str]
-            Column → DataForge field mappings.
-        delimiter : str
-            CSV delimiter.
-        encoding : str
-            File encoding.
-        batch_size : int
-            Rows to process per batch.
-
-        Returns
-        -------
-        int
-            Number of rows processed.
-        """
+        """Anonymize a CSV file in streaming fashion."""
         import csv
 
         total = 0

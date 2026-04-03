@@ -41,16 +41,6 @@ street_names: tuple[str, ...] = (
     "Ring",
     "Rosen",
     "Ryg",
-    "Skov",
-    "Slots",
-    "Sol",
-    "Stations",
-    "Strand",
-    "Syd",
-    "Søndre",
-    "Torve",
-    "Vester",
-    "Øster",
 )
 
 street_suffixes: tuple[str, ...] = (
@@ -122,21 +112,6 @@ cities: tuple[str, ...] = (
     "Roskilde",
     "Rønne",
     "Silkeborg",
-    "Skanderborg",
-    "Skive",
-    "Slagelse",
-    "Solrød",
-    "Svendborg",
-    "Sønderborg",
-    "Thisted",
-    "Tønder",
-    "Valby",
-    "Vanløse",
-    "Vejen",
-    "Vejle",
-    "Viborg",
-    "Virum",
-    "Vordingborg",
 )
 
 states: tuple[str, ...] = (

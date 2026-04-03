@@ -45,16 +45,6 @@ street_names: tuple[str, ...] = (
     "Vostochnaya",
     "Zapadnaya",
     "Severnaya",
-    "Yuzhnaya",
-    "Parkovaya",
-    "Stroiteley",
-    "Moskovskaya",
-    "Peterburgskaya",
-    "Kommunisticheskaya",
-    "Internatsionalnaya",
-    "Revolyutsii",
-    "Truda",
-    "Mironova",
 )
 
 street_suffixes: tuple[str, ...] = (

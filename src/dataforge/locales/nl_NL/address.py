@@ -45,16 +45,6 @@ street_names: tuple[str, ...] = (
     "Zand",
     "Water",
     "Vijver",
-    "Polder",
-    "Moor",
-    "Duinen",
-    "Breedte",
-    "Lange",
-    "Korte",
-    "Noord",
-    "Zuid",
-    "Oost",
-    "West",
 )
 
 street_suffixes: tuple[str, ...] = (

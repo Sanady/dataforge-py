@@ -1,25 +1,4 @@
-"""Streaming to message queues — emit generated data to HTTP, Kafka, RabbitMQ.
-
-Provides abstract and concrete emitters for streaming fake data to
-external systems in real time with rate limiting.
-
-Usage::
-
-    from dataforge import DataForge
-    from dataforge.streaming import HttpEmitter, TokenBucketRateLimiter
-
-    forge = DataForge(seed=42)
-    schema = forge.schema(["first_name", "email", "city"])
-
-    # Stream to HTTP endpoint
-    emitter = HttpEmitter("https://api.example.com/ingest")
-    schema.stream_to(emitter, count=10000, rate_limit=100)
-
-    # With rate limiting
-    limiter = TokenBucketRateLimiter(rate=50, burst=10)
-    emitter = HttpEmitter("https://api.example.com/ingest")
-    stream_to_emitter(schema, emitter, count=1000, rate_limiter=limiter)
-"""
+"""Streaming to message queues — emit generated data to HTTP, Kafka, RabbitMQ."""
 
 from __future__ import annotations
 
@@ -31,21 +10,8 @@ if TYPE_CHECKING:
     from dataforge.schema import Schema
 
 
-# ------------------------------------------------------------------
-# Rate limiter
-# ------------------------------------------------------------------
-
-
 class TokenBucketRateLimiter:
-    """Token bucket rate limiter using ``time.monotonic()``.
-
-    Parameters
-    ----------
-    rate : float
-        Tokens per second (sustained rate).
-    burst : int
-        Maximum burst size (bucket capacity).
-    """
+    """Token bucket rate limiter using ``time.monotonic()``."""
 
     __slots__ = ("_rate", "_burst", "_tokens", "_last_time")
 
@@ -65,22 +31,12 @@ class TokenBucketRateLimiter:
             if self._tokens >= n:
                 self._tokens -= n
                 return
-            # Sleep for the time needed to accumulate enough tokens
             deficit = n - self._tokens
             _time.sleep(deficit / self._rate)
 
 
-# ------------------------------------------------------------------
-# Abstract emitter
-# ------------------------------------------------------------------
-
-
 class StreamEmitter:
-    """Abstract base class for stream emitters.
-
-    Subclasses must implement :meth:`emit` and optionally
-    :meth:`open` and :meth:`close` for resource management.
-    """
+    """Abstract base class for stream emitters."""
 
     __slots__ = ()
 
@@ -92,7 +48,7 @@ class StreamEmitter:
         raise NotImplementedError
 
     def emit_batch(self, rows: list[dict[str, Any]]) -> None:
-        """Emit a batch of rows. Default: emit one by one."""
+        """Emit a batch of rows."""
         for row in rows:
             self.emit(row)
 
@@ -107,28 +63,8 @@ class StreamEmitter:
         self.close()
 
 
-# ------------------------------------------------------------------
-# HTTP emitter (zero-dep, stdlib urllib)
-# ------------------------------------------------------------------
-
-
 class HttpEmitter(StreamEmitter):
-    """Stream data to an HTTP endpoint via POST requests.
-
-    Uses stdlib ``urllib`` — zero external dependencies.
-
-    Parameters
-    ----------
-    url : str
-        Target URL for POST requests.
-    headers : dict[str, str] | None
-        Additional HTTP headers.
-    batch_mode : bool
-        If True, emit_batch sends the whole batch as a JSON array.
-        If False, each row is sent individually.
-    timeout : float
-        Request timeout in seconds.
-    """
+    """Stream data to an HTTP endpoint via POST requests."""
 
     __slots__ = ("_url", "_headers", "_batch_mode", "_timeout")
 
@@ -175,25 +111,8 @@ class HttpEmitter(StreamEmitter):
         return f"HttpEmitter(url={self._url!r})"
 
 
-# ------------------------------------------------------------------
-# Kafka emitter (optional confluent-kafka)
-# ------------------------------------------------------------------
-
-
 class KafkaEmitter(StreamEmitter):
-    """Stream data to Apache Kafka.
-
-    Requires ``confluent-kafka`` to be installed.
-
-    Parameters
-    ----------
-    bootstrap_servers : str
-        Kafka bootstrap servers.
-    topic : str
-        Kafka topic to produce to.
-    config : dict | None
-        Additional Kafka producer configuration.
-    """
+    """Stream data to Apache Kafka (requires ``confluent-kafka``)."""
 
     __slots__ = ("_servers", "_topic", "_config", "_producer")
 
@@ -242,29 +161,8 @@ class KafkaEmitter(StreamEmitter):
         return f"KafkaEmitter(servers={self._servers!r}, topic={self._topic!r})"
 
 
-# ------------------------------------------------------------------
-# RabbitMQ emitter (optional pika)
-# ------------------------------------------------------------------
-
-
 class RabbitMQEmitter(StreamEmitter):
-    """Stream data to RabbitMQ.
-
-    Requires ``pika`` to be installed.
-
-    Parameters
-    ----------
-    host : str
-        RabbitMQ host.
-    queue : str
-        Queue name.
-    exchange : str
-        Exchange name.
-    routing_key : str
-        Routing key.
-    port : int
-        RabbitMQ port.
-    """
+    """Stream data to RabbitMQ (requires ``pika``)."""
 
     __slots__ = (
         "_host",
@@ -325,11 +223,6 @@ class RabbitMQEmitter(StreamEmitter):
         return f"RabbitMQEmitter(host={self._host!r}, queue={self._queue!r})"
 
 
-# ------------------------------------------------------------------
-# Streaming helper
-# ------------------------------------------------------------------
-
-
 def stream_to_emitter(
     schema: "Schema",
     emitter: StreamEmitter,
@@ -337,28 +230,7 @@ def stream_to_emitter(
     batch_size: int = 100,
     rate_limiter: TokenBucketRateLimiter | None = None,
 ) -> int:
-    """Stream schema-generated data to an emitter.
-
-    Uses batch generation and batch emission for better throughput.
-
-    Parameters
-    ----------
-    schema : Schema
-        The DataForge Schema to generate data from.
-    emitter : StreamEmitter
-        The target emitter.
-    count : int
-        Total number of rows to emit.
-    batch_size : int
-        Rows per batch.
-    rate_limiter : TokenBucketRateLimiter | None
-        Optional rate limiter.
-
-    Returns
-    -------
-    int
-        Number of rows emitted.
-    """
+    """Stream schema-generated data to an emitter."""
     emitted = 0
     remaining = count
 
@@ -375,44 +247,4 @@ def stream_to_emitter(
     return emitted
 
 
-def stream_batch_to_emitter(
-    schema: "Schema",
-    emitter: StreamEmitter,
-    count: int = 1000,
-    batch_size: int = 100,
-    rate_limiter: TokenBucketRateLimiter | None = None,
-) -> int:
-    """Stream schema-generated data in batches to an emitter.
-
-    Parameters
-    ----------
-    schema : Schema
-        The DataForge Schema to generate data from.
-    emitter : StreamEmitter
-        The target emitter.
-    count : int
-        Total number of rows to emit.
-    batch_size : int
-        Rows per batch.
-    rate_limiter : TokenBucketRateLimiter | None
-        Optional rate limiter.
-
-    Returns
-    -------
-    int
-        Number of rows emitted.
-    """
-    emitted = 0
-    remaining = count
-
-    with emitter:
-        while remaining > 0:
-            chunk = min(remaining, batch_size)
-            rows = schema.generate(count=chunk)
-            if rate_limiter is not None:
-                rate_limiter.acquire(chunk)
-            emitter.emit_batch(rows)
-            emitted += chunk
-            remaining -= chunk
-
-    return emitted
+stream_batch_to_emitter = stream_to_emitter

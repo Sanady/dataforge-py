@@ -4,8 +4,6 @@ from dataforge import DataForge
 
 
 class TestLoremScalar:
-    """Tests for single-item lorem generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -42,8 +40,6 @@ class TestLoremScalar:
 
 
 class TestLoremBatch:
-    """Tests for batch lorem generation."""
-
     def setup_method(self) -> None:
         self.forge = DataForge(locale="en_US", seed=42)
 
@@ -65,8 +61,6 @@ class TestLoremBatch:
 
 
 class TestLoremLocaleIndependent:
-    """Lorem should work the same regardless of locale."""
-
     def test_lorem_works_with_any_locale(self) -> None:
         for locale in ("en_US", "de_DE", "fr_FR", "es_ES", "ja_JP"):
             forge = DataForge(locale=locale, seed=42)
