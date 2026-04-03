@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/Sanady/dataforge-py/compare/0.3.0...0.4.0) (2026-04-02)
+
+
+### Features
+
+* add 9 advanced feature modules with perf optimizations ([a080f05](https://github.com/Sanady/dataforge-py/commit/a080f054f4c113c6c888d474457b28eb7682c7f4))
+* add 9 advanced features with performance-optimized implementations ([d9d8a51](https://github.com/Sanady/dataforge-py/commit/d9d8a5161070a7292b784d05ee0dcae39e20b709))
+
+
+### Documentation
+
+* add examples and README docs for 9 advanced features ([c995c80](https://github.com/Sanady/dataforge-py/commit/c995c80e8045cb41979d0798c4cccd9600548d28))
+
 ## [0.3.0](https://github.com/Sanady/dataforge-py/compare/0.2.0...0.3.0) (2026-04-01)
 
 
