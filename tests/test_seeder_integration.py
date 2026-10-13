@@ -98,7 +98,7 @@ class TestDatabaseSeederIntegration(unittest.TestCase):
             )
         with self.assertRaises(ValueError) as ctx:
             self.seeder.seed_table("weird", count=1)
-        self.assertIn("could not be mapped", str(ctx.exception))
+        self.assertIn("could be mapped", str(ctx.exception))
 
     def test_field_overrides_extend_mapping(self):
         engine = self.seeder._get_engine()
@@ -128,9 +128,9 @@ class TestDatabaseSeederIntegration(unittest.TestCase):
         # Simulate missing sqlalchemy by clearing cached engine and patching import
         seeder = DatabaseSeeder(self.forge, self.url)
         import builtins
-        import sys
 
         real_import = builtins.__import__
+
         def fake_import(name, *args, **kwargs):
             if name.startswith("sqlalchemy"):
                 raise ModuleNotFoundError("no sqlalchemy")
@@ -153,7 +153,9 @@ class TestSeederRelational(unittest.TestCase):
         self.seeder = DatabaseSeeder(self.forge, "sqlite:///:memory:")
         engine = self.seeder._get_engine()
         with engine.begin() as conn:
-            conn.execute(sa.text("CREATE TABLE parent (id INTEGER PRIMARY KEY, name VARCHAR)"))
+            conn.execute(
+                sa.text("CREATE TABLE parent (id INTEGER PRIMARY KEY, name VARCHAR)")
+            )
             conn.execute(
                 sa.text(
                     "CREATE TABLE child (id INTEGER PRIMARY KEY, parent_id INTEGER, label VARCHAR)"
@@ -163,11 +165,23 @@ class TestSeederRelational(unittest.TestCase):
     def test_seed_relational_returns_counts(self):
         spec = {
             "parent": {"count": 3},
-            "child": {"count": 6, "parent_id": {"ref": "parent.id"}},
+            "child": {
+                "count": 6,
+                "parent": "parent",
+                "parent_key": "parent_id",
+                "field_overrides": {"label": "first_name"},
+            },
         }
         result = self.seeder.seed_relational(spec)
         self.assertEqual(result.get("parent"), 3)
         self.assertEqual(result.get("child"), 6)
+        with self.seeder._get_engine().connect() as conn:
+            parent_ids = {r[0] for r in conn.execute(sa.text("SELECT id FROM parent"))}
+            fk_values = {
+                r[0] for r in conn.execute(sa.text("SELECT parent_id FROM child"))
+            }
+        self.assertTrue(fk_values)
+        self.assertTrue(fk_values <= parent_ids)
 
 
 if __name__ == "__main__":
