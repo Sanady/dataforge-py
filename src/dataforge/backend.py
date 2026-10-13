@@ -276,7 +276,7 @@ class RandomEngine:
                         for _ in range(reps):
                             result.append(_rng.choice(options))
                         continue
-                    elif pattern[i] == "?":
+                    else:  # pattern[i] == "?" — the guard above constrains to {+*?}
                         if _rng.random() > 0.5:
                             result.append(chosen)
                         i += 1
